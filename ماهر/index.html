@@ -2,13 +2,12 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نظام إدارة ديون ومشتركي المولدة - ماهر</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>بوابة مشتركي المولدة - استعلام عن الرصيد والدفعات الشهرية</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
-            darkMode: 'class',
             theme: {
                 extend: {
                     colors: {
@@ -19,11 +18,6 @@
                             600: '#16a34a',
                             700: '#15803d',
                             800: '#166534',
-                            900: '#14532d',
-                        },
-                        amberCustom: {
-                            500: '#f59e0b',
-                            600: '#d97706',
                         }
                     },
                     fontFamily: {
@@ -36,675 +30,196 @@
     <!-- Google Fonts Cairo -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <!-- SheetJS for Excel Import/Export -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-
     <style>
-        body {
-            font-family: 'Cairo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        body { 
+            font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif; 
+            -webkit-tap-highlight-color: transparent;
         }
-        @media print {
-            .no-print {
-                display: none !important;
-            }
-            .print-only {
-                display: block !important;
-            }
-            body {
-                background: white !important;
-                color: black !important;
-            }
-            .page-break {
-                page-break-before: always;
-            }
-        }
-        .print-only {
-            display: none;
-        }
-        /* Custom scrollbar */
-        ::-webkit-scrollbar {
-            width: 7px;
-            height: 7px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #f1f5f9;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
+        /* Mobile 9:16 font size enforcement to prevent iOS auto-zoom */
+        input, select, textarea {
+            font-size: 16px !important;
         }
     </style>
 </head>
-<body class="bg-slate-100 text-slate-800 antialiased min-h-screen flex flex-col selection:bg-brand-500 selection:text-white">
+<body class="bg-gradient-to-b from-slate-100 to-slate-200 text-slate-800 min-h-screen flex flex-col selection:bg-brand-500 selection:text-white">
 
-    <!-- Top Navigation Header -->
-    <header class="no-print bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <div class="w-11 h-11 bg-gradient-to-tr from-brand-600 to-emerald-400 rounded-xl flex items-center justify-center text-white shadow-md shadow-brand-500/20">
-                    <i class="fa-solid fa-bolt text-2xl"></i>
+    <!-- Header for Customer Portal -->
+    <header class="bg-white/95 backdrop-blur-md border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+                <div class="w-10 h-10 bg-gradient-to-tr from-brand-600 to-emerald-400 rounded-xl flex items-center justify-center text-white shadow-md shadow-brand-500/20">
+                    <i class="fa-solid fa-bolt text-lg"></i>
                 </div>
                 <div>
-                    <h1 class="text-xl font-black text-slate-800 tracking-tight flex items-center gap-2">
-                        <span id="appHeaderTitle">مولدة الأمانة</span>
-                        <span class="text-xs font-semibold px-2 py-0.5 bg-brand-100 text-brand-800 rounded-full border border-brand-200">إدارة الديون</span>
-                    </h1>
-                    <p class="text-xs text-slate-500" id="appOwnerSubtitle">لوحة تحكم السيد ماهر لمتابعة الاشتراكات والديون</p>
+                    <h1 class="text-base sm:text-lg font-black text-slate-900 leading-tight" id="portalGenName">مولدة الأمانة</h1>
+                    <p class="text-[11px] text-slate-400">بوابة استعلام المشتركين</p>
                 </div>
             </div>
 
-            <!-- Quick Action Header Buttons -->
-            <div class="flex items-center gap-2">
-                <button onclick="openModal('newSubscriberModal')" class="bg-brand-600 hover:bg-brand-700 text-white px-3.5 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition shadow-sm hover:shadow">
-                    <i class="fa-solid fa-user-plus"></i>
-                    <span class="hidden sm:inline">إضافة مشترك جديد</span>
-                </button>
-                <button onclick="openModal('quickPaymentModal')" class="bg-emerald-50 hover:bg-emerald-100 text-brand-700 border border-brand-200 px-3.5 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition">
-                    <i class="fa-solid fa-money-bill-wave"></i>
-                    <span class="hidden sm:inline">تسجيل دفعة</span>
-                </button>
-                <button onclick="openModal('generateMonthModal')" class="bg-amber-500 hover:bg-amber-600 text-white px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-1.5 transition shadow-sm">
-                    <i class="fa-solid fa-calendar-plus"></i>
-                    <span class="hidden md:inline">توليد الشهر</span>
-                </button>
-                <button onclick="openModal('settingsModal')" title="الإعدادات" class="p-2.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition">
-                    <i class="fa-solid fa-gear"></i>
-                </button>
-            </div>
+            <!-- Link to Admin Portal with Lock Icon -->
+            <a href="admin.html" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 hover:text-slate-900 rounded-xl transition border border-slate-200 shadow-sm active:scale-95">
+                <i class="fa-solid fa-lock text-[11px] text-amber-500"></i>
+                <span>لوحة الإدارة</span>
+            </a>
         </div>
     </header>
 
-    <!-- Main Container -->
-    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+    <!-- Main Content Container (Mobile 9:16 Optimized) -->
+    <main class="flex-grow max-w-xl sm:max-w-3xl w-full mx-auto px-3.5 sm:px-4 py-5 sm:py-8 space-y-4 sm:space-y-6">
 
-        <!-- KPI Statistic Cards -->
-        <div class="no-print grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
-            <!-- Total Debt Card -->
-            <div class="bg-white p-4 rounded-xl border border-red-100 shadow-sm relative overflow-hidden">
-                <div class="absolute -right-3 -top-3 w-16 h-16 bg-red-50 rounded-full flex items-center justify-center opacity-70">
-                    <i class="fa-solid fa-hand-holding-dollar text-red-400 text-2xl"></i>
+        <!-- Welcome Banner -->
+        <div class="bg-gradient-to-r from-brand-700 to-emerald-600 text-white rounded-3xl p-5 sm:p-6 shadow-xl relative overflow-hidden text-right">
+            <div class="absolute -left-6 -bottom-6 w-32 h-32 bg-white/10 rounded-full blur-xl"></div>
+            <div class="relative z-10 flex items-center justify-between gap-3">
+                <div>
+                    <span class="inline-block px-2.5 py-0.5 bg-white/20 rounded-full text-[10px] sm:text-xs font-bold mb-1.5">أهلاً وسهلاً بكم</span>
+                    <h2 class="text-lg sm:text-2xl font-black">الاستعلام عن اشتراك المولدة</h2>
+                    <p class="text-xs text-emerald-100 mt-1 max-w-sm">أدخل رقم هاتفك أو اسمك للاطلاع على تفاصيل اشتراكك ومقدار الديون والدفعات المسجلة</p>
                 </div>
-                <span class="text-xs font-bold text-red-600 block mb-1">إجمالي الديون المطلوبة</span>
-                <div class="text-xl sm:text-2xl font-black text-slate-900" id="statTotalDebt">0</div>
-                <span class="text-[11px] text-slate-400 font-medium" id="statDebtCount">0 مشترك عليهم ديون</span>
-            </div>
-
-            <!-- Total Collected Card -->
-            <div class="bg-white p-4 rounded-xl border border-emerald-100 shadow-sm relative overflow-hidden">
-                <div class="absolute -right-3 -top-3 w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center opacity-70">
-                    <i class="fa-solid fa-circle-check text-emerald-400 text-2xl"></i>
+                <div class="w-14 h-14 sm:w-16 sm:h-16 bg-white/10 border border-white/20 rounded-2xl flex items-center justify-center text-2xl sm:text-3xl flex-shrink-0">
+                    <i class="fa-solid fa-file-invoice-dollar"></i>
                 </div>
-                <span class="text-xs font-bold text-emerald-600 block mb-1">المبالغ المسددة (التحصيل)</span>
-                <div class="text-xl sm:text-2xl font-black text-slate-900" id="statTotalCollected">0</div>
-                <span class="text-[11px] text-slate-400 font-medium" id="statPaymentCount">0 دفعة مسجلة</span>
-            </div>
-
-            <!-- Total Subscribers Card -->
-            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden">
-                <div class="absolute -right-3 -top-3 w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center opacity-70">
-                    <i class="fa-solid fa-users text-slate-400 text-2xl"></i>
-                </div>
-                <span class="text-xs font-bold text-slate-500 block mb-1">إجمالي المشتركين</span>
-                <div class="text-xl sm:text-2xl font-black text-slate-900" id="statTotalSubscribers">0</div>
-                <span class="text-[11px] text-emerald-600 font-medium" id="statActiveSubscribers">0 نشط حالياً</span>
-            </div>
-
-            <!-- Total Amperes Card -->
-            <div class="bg-white p-4 rounded-xl border border-blue-100 shadow-sm relative overflow-hidden">
-                <div class="absolute -right-3 -top-3 w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center opacity-70">
-                    <i class="fa-solid fa-plug-circle-bolt text-blue-400 text-2xl"></i>
-                </div>
-                <span class="text-xs font-bold text-blue-600 block mb-1">مجموع الأمبيرات المسحوبة</span>
-                <div class="text-xl sm:text-2xl font-black text-slate-900" id="statTotalAmperes">0</div>
-                <span class="text-[11px] text-slate-400 font-medium">أمبير حمل إجمالي</span>
-            </div>
-
-            <!-- Monthly Rate Card -->
-            <div class="col-span-2 lg:col-span-1 bg-white p-4 rounded-xl border border-amber-100 shadow-sm relative overflow-hidden">
-                <div class="absolute -right-3 -top-3 w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center opacity-70">
-                    <i class="fa-solid fa-tag text-amber-400 text-2xl"></i>
-                </div>
-                <span class="text-xs font-bold text-amber-600 block mb-1">سعر الأمبير الافتراضي</span>
-                <div class="text-xl sm:text-2xl font-black text-slate-900" id="statDefaultRate">0</div>
-                <span class="text-[11px] text-slate-400 font-medium" id="currentCurrencyLabel">دينار / أمبير</span>
             </div>
         </div>
 
-        <!-- Controls, Filter & Search Section -->
-        <div class="no-print bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-4">
-            <div class="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
-                <!-- Search Box -->
+        <!-- Search Card -->
+        <div class="bg-white rounded-3xl p-4 sm:p-6 shadow-md border border-slate-200 space-y-3 sm:space-y-4">
+            <label class="block text-xs sm:text-sm font-bold text-slate-700">
+                <i class="fa-solid fa-mobile-screen-button text-brand-600 ml-1"></i>
+                أدخل رقم الهاتف أو اسم المشترك:
+            </label>
+            
+            <form onsubmit="searchSubscriber(event)" class="flex flex-col sm:flex-row gap-2">
                 <div class="relative flex-grow">
-                    <i class="fa-solid fa-magnifying-glass absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
-                    <input type="text" id="searchInput" oninput="filterSubscribers()" placeholder="ابحث باسم المشترك، الهاتف، رقم العمود، العنوان، أو الملاحظة..." 
-                        class="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-brand-500 focus:bg-white transition">
+                    <input type="text" id="custSearchInput" required placeholder="مثال: 07701234567 أو أحمد..." 
+                        class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-base text-slate-800 placeholder-slate-400 focus:outline-none focus:border-brand-500 focus:bg-white transition">
                 </div>
-
-                <!-- Secondary Action Buttons -->
-                <div class="flex flex-wrap items-center gap-2">
-                    <button onclick="printDebtReport()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold flex items-center gap-1.5 transition">
-                        <i class="fa-solid fa-print"></i>
-                        <span>طباعة كشف الديون</span>
-                    </button>
-                    <button onclick="exportToExcel()" class="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-bold flex items-center gap-1.5 transition">
-                        <i class="fa-solid fa-file-excel"></i>
-                        <span>تصدير Excel</span>
-                    </button>
-                    <label class="px-3 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer transition">
-                        <i class="fa-solid fa-file-import"></i>
-                        <span>استيراد Excel</span>
-                        <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" onchange="importFromExcel(event)" class="hidden">
-                    </label>
-                    <button onclick="openModal('backupModal')" class="px-2.5 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold flex items-center gap-1.5 transition" title="نسخ احتياطي">
-                        <i class="fa-solid fa-database"></i>
-                        <span class="hidden sm:inline">نسخ احتياطي</span>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Filters Row -->
-            <div class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100 text-xs">
-                <!-- Status Tabs -->
-                <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
-                    <button onclick="setStatusFilter('all')" id="tab_all" class="px-3 py-1.5 rounded-md font-bold transition bg-white shadow-sm text-brand-700">
-                        الكل (<span id="count_all">0</span>)
-                    </button>
-                    <button onclick="setStatusFilter('debt')" id="tab_debt" class="px-3 py-1.5 rounded-md font-bold transition text-slate-600 hover:text-red-600">
-                        عليهم ديون (<span id="count_debt">0</span>)
-                    </button>
-                    <button onclick="setStatusFilter('paid')" id="tab_paid" class="px-3 py-1.5 rounded-md font-bold transition text-slate-600 hover:text-emerald-600">
-                        خالصين (<span id="count_paid">0</span>)
-                    </button>
-                    <button onclick="setStatusFilter('inactive')" id="tab_inactive" class="px-3 py-1.5 rounded-md font-bold transition text-slate-600 hover:text-slate-900">
-                        متوقفين (<span id="count_inactive">0</span>)
-                    </button>
-                </div>
-
-                <!-- Line / Region Filter & Sort By -->
-                <div class="flex items-center gap-2">
-                    <select id="lineFilter" onchange="filterSubscribers()" class="bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:border-brand-500">
-                        <option value="all">جميع الخطوط والشوارع</option>
-                    </select>
-
-                    <select id="sortBy" onchange="filterSubscribers()" class="bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:border-brand-500">
-                        <option value="debt-desc">ترتيب: الأعلى ديناً</option>
-                        <option value="debt-asc">ترتيب: الأقل ديناً</option>
-                        <option value="name-asc">ترتيب: الاسم أبجدياً</option>
-                        <option value="amperes-desc">ترتيب: الأكثر أمبيرات</option>
-                        <option value="recent">ترتيب: آخر إضافة</option>
-                    </select>
-                </div>
-            </div>
-        </div>
-
-        <!-- Subscribers Table / Grid -->
-        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            <div class="overflow-x-auto">
-                <table class="w-full text-right text-sm">
-                    <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 text-xs font-bold">
-                        <tr>
-                            <th class="py-3 px-4">#</th>
-                            <th class="py-3 px-4">اسم المشترك والتواصل</th>
-                            <th class="py-3 px-4">الخط / العنوان</th>
-                            <th class="py-3 px-4 text-center">الأمبيرات</th>
-                            <th class="py-3 px-4 text-center">الاشتراك الشهري</th>
-                            <th class="py-3 px-4 text-center">إجمالي الدين المطلوب</th>
-                            <th class="py-3 px-4 text-center">حالة الحساب</th>
-                            <th class="py-3 px-4 text-center no-print">الإجراءات والعمليات</th>
-                        </tr>
-                    </thead>
-                    <tbody id="subscribersTableBody" class="divide-y divide-slate-100">
-                        <!-- Populated dynamically via JS -->
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Empty State -->
-            <div id="emptyState" class="hidden py-14 text-center">
-                <div class="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <i class="fa-solid fa-users-slash text-2xl"></i>
-                </div>
-                <h3 class="text-base font-bold text-slate-700">لا يوجد أي مشترك مطابق للبحث</h3>
-                <p class="text-xs text-slate-400 mt-1">تأكد من شروط البحث أو قم بإضافة مشترك جديد الآن</p>
-                <button onclick="openModal('newSubscriberModal')" class="mt-4 bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg text-xs font-bold inline-flex items-center gap-2">
-                    <i class="fa-solid fa-user-plus"></i>
-                    <span>إضافة أول مشترك</span>
+                <button type="submit" class="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-brand-600 to-emerald-600 hover:from-brand-700 text-white font-bold rounded-2xl shadow-md active:scale-95 transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <span>استعلام</span>
                 </button>
+            </form>
+            <p class="text-[10px] sm:text-[11px] text-slate-400">يمكنك إدخال رقم الهاتف بصيغة 077... أو بالاسم كما هو مسجل لدى مسؤول المولدة.</p>
+        </div>
+
+        <!-- Search Result: Not Found -->
+        <div id="notFoundBox" class="hidden bg-white rounded-3xl p-6 sm:p-8 text-center border border-slate-200 shadow-sm space-y-3">
+            <div class="w-12 h-12 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center mx-auto text-xl">
+                <i class="fa-solid fa-circle-exclamation"></i>
+            </div>
+            <h3 class="text-sm sm:text-base font-bold text-slate-800">لم يتم العثور على أي اشتراك بهذا الرقم أو الاسم</h3>
+            <p class="text-xs text-slate-500 max-w-sm mx-auto">تأكد من كتابة رقم الهاتف أو الاسم بشكل صحيح، أو تواصل مع إدارة المولدة للتحديث.</p>
+            <div class="pt-1">
+                <a id="contactOwnerBtn" href="#" class="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold hover:bg-emerald-100 active:scale-95 transition">
+                    <i class="fa-brands fa-whatsapp text-sm"></i>
+                    <span>تواصل مع مسؤول المولدة عبر واتساب</span>
+                </a>
             </div>
         </div>
+
+        <!-- Search Result: Customer Statement Card -->
+        <div id="subscriberResultCard" class="hidden bg-white rounded-3xl border border-slate-200 shadow-lg overflow-hidden space-y-0">
+            <!-- Card Header -->
+            <div class="p-4 sm:p-5 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                <div>
+                    <span class="text-[10px] font-bold text-brand-600 block mb-0.5">بطاقة المشترك الرسمية</span>
+                    <h3 class="text-lg sm:text-xl font-black text-slate-900" id="resSubName">-</h3>
+                    <p class="text-xs text-slate-500" id="resSubPhone">هاتف: -</p>
+                </div>
+                <div>
+                    <span id="resSubBadge" class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800">
+                        مطلوب دين
+                    </span>
+                </div>
+            </div>
+
+            <!-- Key Info Grid (Responsive on 9:16 mobile) -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 p-4 sm:p-5 border-b border-slate-100 bg-white">
+                <div class="p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                    <span class="text-[10px] sm:text-[11px] text-slate-500 block">عدد الأمبيرات</span>
+                    <span class="text-base sm:text-lg font-black text-slate-800" id="resAmperes">0 أمبير</span>
+                </div>
+                <div class="p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                    <span class="text-[10px] sm:text-[11px] text-slate-500 block">سعر أمبير الشهر</span>
+                    <span class="text-base sm:text-lg font-black text-slate-800" id="resMonthlyRate">0 د.ع</span>
+                </div>
+                <div class="col-span-2 sm:col-span-1 p-3 bg-red-50 rounded-2xl border border-red-100">
+                    <span class="text-[10px] sm:text-[11px] text-red-600 font-bold block">إجمالي الدين المطلوب</span>
+                    <span class="text-lg sm:text-xl font-black text-red-600" id="resCurrentDebt">0 د.ع</span>
+                </div>
+            </div>
+
+            <!-- Detailed Monthly Breakdown -->
+            <div class="p-4 sm:p-5 space-y-2.5 bg-slate-50/50 border-b border-slate-200">
+                <div class="flex items-center justify-between">
+                    <h4 class="text-xs sm:text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                        <i class="fa-solid fa-calendar-check text-brand-600"></i>
+                        <span>كشف الأشهر (سعر الأمبير والمستحق والمسدد):</span>
+                    </h4>
+                </div>
+
+                <div class="overflow-x-auto border border-slate-200 rounded-2xl bg-white shadow-sm">
+                    <table class="w-full text-right text-xs">
+                        <thead class="bg-slate-100 text-slate-700 border-b font-bold">
+                            <tr>
+                                <th class="p-2 sm:p-2.5">الشهر</th>
+                                <th class="p-2 sm:p-2.5 text-center">سعر الأمبير</th>
+                                <th class="p-2 sm:p-2.5 text-center">المطلوب</th>
+                                <th class="p-2 sm:p-2.5 text-center">المسدد</th>
+                                <th class="p-2 sm:p-2.5 text-center">المتبقي</th>
+                                <th class="p-2 sm:p-2.5 text-center">الحالة</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resMonthlyTableBody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Financial History -->
+            <div class="p-4 sm:p-5 space-y-2.5">
+                <h4 class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                    <i class="fa-solid fa-clock-rotate-left text-slate-400"></i>
+                    <span>سجل الحركات والدفعات النقدية:</span>
+                </h4>
+
+                <div class="overflow-x-auto border border-slate-200 rounded-2xl">
+                    <table class="w-full text-right text-xs">
+                        <thead class="bg-slate-50 text-slate-600 border-b">
+                            <tr>
+                                <th class="p-2 sm:p-2.5">التاريخ</th>
+                                <th class="p-2 sm:p-2.5">النوع والبيان</th>
+                                <th class="p-2 sm:p-2.5 text-center">المبلغ</th>
+                                <th class="p-2 sm:p-2.5 text-center">الرصيد بعد الحركة</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resTxTableBody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Card Actions -->
+            <div class="p-4 sm:p-5 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div class="text-[11px] text-slate-500 text-center sm:text-right">
+                    لإرسال إشعار تسديد أو لأي استفسار يرجى التواصل عبر واتساب:
+                </div>
+                <a id="resWhatsAppConfirmBtn" href="#" target="_blank" class="w-full sm:w-auto px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-xs font-bold flex items-center justify-center gap-2 transition shadow-sm active:scale-95">
+                    <i class="fa-brands fa-whatsapp text-sm"></i>
+                    <span>إرسال إشعار تسديد للمسؤول</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="text-center text-xs text-slate-400 pt-4 pb-6">
+            <p>نظام إدارة المشتركين والديون - إدارة <span id="footerOwnerName">ماهر</span></p>
+        </footer>
 
     </main>
 
-    <!-- Printable Debt Report Container (Hidden on screen, shown in Print) -->
-    <div id="printableReport" class="print-only p-6 font-cairo">
-        <div class="text-center pb-4 border-b-2 border-slate-800 mb-4">
-            <h1 class="text-2xl font-black" id="printReportTitle">كشف ديون المشتركين - مولدة الأمانة</h1>
-            <p class="text-sm mt-1" id="printReportSubtitle">كشف تفصيلي بالديون المستحقة لمتابعة التحصيل والجولة</p>
-            <div class="flex justify-between text-xs text-slate-600 mt-3">
-                <span id="printDate">التاريخ: </span>
-                <span id="printTotalDebtSum">إجمالي الديون: </span>
-                <span id="printSubscribersCount">عدد المشتركين المدينين: </span>
-            </div>
-        </div>
-        <table class="w-full text-right text-xs border-collapse">
-            <thead>
-                <tr class="border-b border-slate-700 bg-slate-100">
-                    <th class="p-2 border">#</th>
-                    <th class="p-2 border">اسم المشترك</th>
-                    <th class="p-2 border">رقم الهاتف</th>
-                    <th class="p-2 border">المنطقة / الخط</th>
-                    <th class="p-2 border text-center">أمبير</th>
-                    <th class="p-2 border text-center">الاشتراك</th>
-                    <th class="p-2 border text-center font-bold">الدين المطلوب</th>
-                    <th class="p-2 border text-center">التوقيع / الملاحظة</th>
-                </tr>
-            </thead>
-            <tbody id="printableTableBody">
-                <!-- Dynamically filled -->
-            </tbody>
-        </table>
-    </div>
-
-    <!-- Printable Thermal Receipt (80mm) -->
-    <div id="printableReceipt" class="print-only p-4 font-cairo max-w-[80mm] mx-auto text-slate-900">
-        <div class="text-center border-b pb-2 mb-2">
-            <h2 class="text-lg font-bold" id="rcptGeneratorName">مولدة الأمانة</h2>
-            <p class="text-xs" id="rcptPhone">هاتف: 07700000000</p>
-            <p class="text-xs font-semibold text-slate-600">وصل استلام دفعة نقدية</p>
-        </div>
-        <div class="text-xs space-y-1 mb-3">
-            <div class="flex justify-between"><span>رقم الوصل:</span><span id="rcptId" class="font-bold">#</span></div>
-            <div class="flex justify-between"><span>التاريخ:</span><span id="rcptDate"></span></div>
-            <div class="flex justify-between"><span>اسم المشترك:</span><span id="rcptCustomer" class="font-bold"></span></div>
-            <div class="flex justify-between"><span>عدد الأمبيرات:</span><span id="rcptAmperes"></span></div>
-        </div>
-        <div class="border-t border-b py-2 mb-2 text-center bg-slate-50">
-            <span class="text-xs text-slate-600">المبلغ المستلم:</span>
-            <div class="text-xl font-black text-slate-900 mt-0.5" id="rcptAmount">0</div>
-        </div>
-        <div class="text-xs space-y-1 mb-4">
-            <div class="flex justify-between"><span>الدين قبل الدفعة:</span><span id="rcptOldDebt"></span></div>
-            <div class="flex justify-between font-bold text-red-600"><span>المتبقي في الذمة:</span><span id="rcptNewDebt"></span></div>
-            <div class="flex justify-between text-slate-500"><span>الملاحظة:</span><span id="rcptNotes">-</span></div>
-        </div>
-        <div class="text-center text-[11px] text-slate-500 border-t pt-2">
-            شكراً لالتزامكم - نرجو الاحتفاظ بالوصل
-        </div>
-    </div>
-
-    <!-- MODAL: Add / Edit Subscriber -->
-    <div id="newSubscriberModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
-            <div class="flex items-center justify-between border-b pb-3">
-                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2" id="subscriberModalTitle">
-                    <i class="fa-solid fa-user-plus text-brand-600"></i>
-                    <span>إضافة مشترك جديد</span>
-                </h3>
-                <button onclick="closeModal('newSubscriberModal')" class="text-slate-400 hover:text-slate-600 p-1">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
-            </div>
-
-            <form id="subscriberForm" onsubmit="saveSubscriber(event)" class="space-y-4 text-xs font-semibold">
-                <input type="hidden" id="subId">
-
-                <div>
-                    <label class="block text-slate-700 mb-1">اسم المشترك الكامل <span class="text-red-500">*</span></label>
-                    <input type="text" id="subName" required placeholder="مثال: أحمد عبد الله الرافدين" 
-                        class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-normal focus:outline-none focus:border-brand-500">
-                </div>
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-slate-700 mb-1">رقم الهاتف (واتساب)</label>
-                        <input type="tel" id="subPhone" placeholder="مثال: 07701234567" 
-                            class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-normal focus:outline-none focus:border-brand-500">
-                    </div>
-                    <div>
-                        <label class="block text-slate-700 mb-1">الخط / المنطقة / الزقاق</label>
-                        <input type="text" id="subLine" placeholder="مثال: الخط الأول - شارع 14" 
-                            class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-normal focus:outline-none focus:border-brand-500">
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div>
-                        <label class="block text-slate-700 mb-1">عدد الأمبيرات <span class="text-red-500">*</span></label>
-                        <input type="number" id="subAmperes" required min="0.5" step="0.5" value="5" oninput="calculateSubMonthly()"
-                            class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-normal focus:outline-none focus:border-brand-500">
-                    </div>
-                    <div>
-                        <label class="block text-slate-700 mb-1">سعر الأمبير الخاص</label>
-                        <input type="number" id="subRate" min="0" step="100" placeholder="اتركه فارغاً للافتراضي" oninput="calculateSubMonthly()"
-                            class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-normal focus:outline-none focus:border-brand-500">
-                    </div>
-                    <div>
-                        <label class="block text-slate-700 mb-1">الاشتراك الشهري التقديري</label>
-                        <input type="text" id="subMonthlyPreview" readonly 
-                            class="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-lg text-sm font-bold text-brand-700 focus:outline-none">
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-slate-700 mb-1">الدين السابق / الرصيد الافتتاحي</label>
-                        <input type="number" id="subDebt" min="0" step="500" value="0" 
-                            class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-normal text-red-600 focus:outline-none focus:border-brand-500">
-                        <span class="text-[10px] text-slate-400 font-normal">أي مبلغ قديم مطلوب من المشترك قبل البدء</span>
-                    </div>
-                    <div>
-                        <label class="block text-slate-700 mb-1">حالة الاشتراك</label>
-                        <select id="subStatus" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-normal focus:outline-none focus:border-brand-500">
-                            <option value="active">نشط (مشترك حالي)</option>
-                            <option value="inactive">متوقف مؤقتاً (مفصول)</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-slate-700 mb-1">ملاحظات إضافية / رقم العمود أو العداد</label>
-                    <textarea id="subNotes" rows="2" placeholder="ملاحظات حول موقع السحب أو العمود أو أي اتفاق خاص..."
-                        class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-normal focus:outline-none focus:border-brand-500"></textarea>
-                </div>
-
-                <div class="pt-3 border-t flex justify-end gap-2">
-                    <button type="button" onclick="closeModal('newSubscriberModal')" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition">إلغاء</button>
-                    <button type="submit" class="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-lg font-bold shadow-md transition">حفظ المشترك</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- MODAL: Record Payment -->
-    <div id="quickPaymentModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <div class="flex items-center justify-between border-b pb-3">
-                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-                    <i class="fa-solid fa-money-bill-wave text-emerald-600"></i>
-                    <span>تسجيل دفعة نقدية / تسديد</span>
-                </h3>
-                <button onclick="closeModal('quickPaymentModal')" class="text-slate-400 hover:text-slate-600 p-1">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
-            </div>
-
-            <form id="paymentForm" onsubmit="submitPayment(event)" class="space-y-4 text-xs font-semibold">
-                <div>
-                    <label class="block text-slate-700 mb-1">اختر المشترك <span class="text-red-500">*</span></label>
-                    <select id="paymentSubscriberSelect" required onchange="onPaymentSubscriberChange()"
-                        class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-normal focus:outline-none focus:border-emerald-500">
-                        <option value="">-- اختر المشترك من القائمة --</option>
-                    </select>
-                </div>
-
-                <!-- Balance Details Card -->
-                <div id="paymentSubscriberDetails" class="hidden bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1">
-                    <div class="flex justify-between">
-                        <span class="text-slate-500">الدين الحالي المطلوب:</span>
-                        <span id="paymentCurrentDebt" class="text-sm font-black text-red-600">0</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-slate-500">الاشتراك الشهري:</span>
-                        <span id="paymentMonthlyRate" class="text-xs font-bold text-slate-700">0</span>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-slate-700 mb-1">المبلغ المدفوع <span class="text-red-500">*</span></label>
-                        <input type="number" id="paymentAmount" required min="1" step="500" placeholder="0" 
-                            class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-base font-bold text-emerald-700 focus:outline-none focus:border-emerald-500">
-                    </div>
-                    <div>
-                        <label class="block text-slate-700 mb-1">تاريخ الدفعة <span class="text-red-500">*</span></label>
-                        <input type="date" id="paymentDate" required 
-                            class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-normal focus:outline-none focus:border-emerald-500">
-                    </div>
-                </div>
-
-                <div>
-                    <div class="flex items-center justify-between mb-1">
-                        <label class="text-slate-700">أزرار سريعة للمبلغ:</label>
-                        <button type="button" onclick="payFullDebt()" class="text-brand-700 text-[11px] font-bold hover:underline">تسديد كامل الدين</button>
-                    </div>
-                    <div class="flex gap-2">
-                        <button type="button" onclick="setQuickAmount(10000)" class="flex-1 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-xs">10,000</button>
-                        <button type="button" onclick="setQuickAmount(25000)" class="flex-1 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-xs">25,000</button>
-                        <button type="button" onclick="setQuickAmount(50000)" class="flex-1 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-xs">50,000</button>
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-slate-700 mb-1">ملاحظة أو بيان الدفعة</label>
-                    <input type="text" id="paymentNote" placeholder="مثال: دفعة عن شهر تشرين / كاش / تحويل زين كاش..." 
-                        class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-normal focus:outline-none focus:border-emerald-500">
-                </div>
-
-                <div class="flex items-center gap-2 py-1">
-                    <input type="checkbox" id="printReceiptAfterPay" checked class="w-4 h-4 text-brand-600 rounded">
-                    <label for="printReceiptAfterPay" class="text-slate-700 font-normal cursor-pointer text-xs">عرض وطباعة وصل استلام فور الحفظ</label>
-                </div>
-
-                <div class="pt-3 border-t flex justify-end gap-2">
-                    <button type="button" onclick="closeModal('quickPaymentModal')" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition">إلغاء</button>
-                    <button type="submit" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold shadow-md transition">حفظ الدفعة</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- MODAL: Generate Monthly Subscriptions -->
-    <div id="generateMonthModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <div class="flex items-center justify-between border-b pb-3">
-                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-                    <i class="fa-solid fa-calendar-plus text-amber-500"></i>
-                    <span>ترحيل وتوليد اشتراك شهر جديد</span>
-                </h3>
-                <button onclick="closeModal('generateMonthModal')" class="text-slate-400 hover:text-slate-600 p-1">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
-            </div>
-
-            <div class="text-xs text-slate-600 leading-relaxed bg-amber-50 border border-amber-200 p-3 rounded-xl">
-                <i class="fa-solid fa-circle-info text-amber-600 ml-1"></i>
-                تقوم هذه العملية بإضافة مبلغ الاشتراك الشهري لكل مشترك نشط (بناءً على عدد أمبيراته وسعر الأمبير) تلقائياً إلى رصيد ديونه.
-            </div>
-
-            <form id="generateMonthForm" onsubmit="executeGenerateMonth(event)" class="space-y-4 text-xs font-semibold">
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-slate-700 mb-1">الشهر المستحق <span class="text-red-500">*</span></label>
-                        <select id="genMonthSelect" required class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-normal">
-                            <option value="1">كانون الثاني (1)</option>
-                            <option value="2">شباط (2)</option>
-                            <option value="3">آذار (3)</option>
-                            <option value="4">نيسان (4)</option>
-                            <option value="5">أيار (5)</option>
-                            <option value="6">حزيران (6)</option>
-                            <option value="7">تموز (7)</option>
-                            <option value="8">آب (8)</option>
-                            <option value="9">أيلول (9)</option>
-                            <option value="10">تشرين الأول (10)</option>
-                            <option value="11" selected>تشرين الثاني (11)</option>
-                            <option value="12">كانون الأول (12)</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-slate-700 mb-1">السنة <span class="text-red-500">*</span></label>
-                        <input type="number" id="genYearInput" value="2026" required class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-normal">
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-slate-700 mb-1">سعر الأمبير لهذا الشهر (للمشتركين بدون سعر خاص)</label>
-                    <input type="number" id="genMonthRate" required min="0" step="250" 
-                        class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold text-amber-600">
-                </div>
-
-                <div class="space-y-2 pt-2 border-t">
-                    <div class="flex items-center gap-2">
-                        <input type="checkbox" id="genIncludeInactive" class="w-4 h-4 rounded text-brand-600">
-                        <label for="genIncludeInactive" class="text-slate-700 font-normal">تضمين المشتركين المتوقفين أيضاً (افتراضياً يستثنى المتوقفين)</label>
-                    </div>
-                </div>
-
-                <div class="pt-3 border-t flex justify-end gap-2">
-                    <button type="button" onclick="closeModal('generateMonthModal')" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition">إلغاء</button>
-                    <button type="submit" class="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-bold shadow-md transition">تأكيد وتوليد الشهر</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- MODAL: Statement / History for Single Subscriber -->
-    <div id="statementModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
-            <div class="flex items-center justify-between border-b pb-3">
-                <div>
-                    <h3 class="text-lg font-bold text-slate-800" id="statementName">كشف حساب المشترك</h3>
-                    <p class="text-xs text-slate-500" id="statementSubDetails">تفاصيل السجل المالي والحركات</p>
-                </div>
-                <button onclick="closeModal('statementModal')" class="text-slate-400 hover:text-slate-600 p-1">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
-            </div>
-
-            <div class="flex-grow overflow-y-auto">
-                <table class="w-full text-right text-xs">
-                    <thead class="bg-slate-50 text-slate-600 border-b">
-                        <tr>
-                            <th class="p-2.5">التاريخ</th>
-                            <th class="p-2.5">نوع الحركة والبيان</th>
-                            <th class="p-2.5 text-center">المبلغ المطلوب (+)</th>
-                            <th class="p-2.5 text-center">المبلغ المدفوع (-)</th>
-                            <th class="p-2.5 text-center">الرصيد المتبقي</th>
-                            <th class="p-2.5 text-center">إجراء</th>
-                        </tr>
-                    </thead>
-                    <tbody id="statementTableBody" class="divide-y divide-slate-100">
-                        <!-- Populated dynamically -->
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="pt-3 border-t flex items-center justify-between">
-                <div>
-                    <span class="text-xs text-slate-500">إجمالي الدين الحالي:</span>
-                    <span class="text-base font-black text-red-600 mr-1" id="statementCurrentDebt">0</span>
-                </div>
-                <div class="flex gap-2">
-                    <button id="statementWhatsAppBtn" class="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-bold flex items-center gap-1.5">
-                        <i class="fa-brands fa-whatsapp text-sm"></i>
-                        <span>إرسال عبر واتساب</span>
-                    </button>
-                    <button onclick="closeModal('statementModal')" class="px-4 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold">إغلاق</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL: Settings -->
-    <div id="settingsModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <div class="flex items-center justify-between border-b pb-3">
-                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-                    <i class="fa-solid fa-gear text-slate-600"></i>
-                    <span>إعدادات النظام والمولدة</span>
-                </h3>
-                <button onclick="closeModal('settingsModal')" class="text-slate-400 hover:text-slate-600 p-1">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
-            </div>
-
-            <form id="settingsForm" onsubmit="saveSettings(event)" class="space-y-3.5 text-xs font-semibold">
-                <div>
-                    <label class="block text-slate-700 mb-1">اسم المولدة</label>
-                    <input type="text" id="settingGenName" required class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-normal">
-                </div>
-                <div>
-                    <label class="block text-slate-700 mb-1">اسم المسؤول / صاحب المولدة</label>
-                    <input type="text" id="settingOwnerName" required class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-normal">
-                </div>
-                <div>
-                    <label class="block text-slate-700 mb-1">رقم هاتف المولدة للتواصل</label>
-                    <input type="tel" id="settingGenPhone" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-normal">
-                </div>
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-slate-700 mb-1">سعر الأمبير الافتراضي</label>
-                        <input type="number" id="settingDefaultRate" required min="0" step="250" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-normal">
-                    </div>
-                    <div>
-                        <label class="block text-slate-700 mb-1">اسم العملة</label>
-                        <input type="text" id="settingCurrency" required class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-normal" placeholder="مثال: دينار عراقي">
-                    </div>
-                </div>
-
-                <div class="pt-3 border-t flex justify-end gap-2">
-                    <button type="button" onclick="closeModal('settingsModal')" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition">إلغاء</button>
-                    <button type="submit" class="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg font-bold transition">حفظ الإعدادات</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- MODAL: Backup & Reset -->
-    <div id="backupModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <div class="flex items-center justify-between border-b pb-3">
-                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-                    <i class="fa-solid fa-database text-brand-600"></i>
-                    <span>النسخ الاحتياطي واستعادة البيانات</span>
-                </h3>
-                <button onclick="closeModal('backupModal')" class="text-slate-400 hover:text-slate-600 p-1">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
-            </div>
-
-            <div class="space-y-3 text-xs">
-                <!-- Backup -->
-                <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl">
-                    <h4 class="font-bold text-slate-800 mb-1">تصدير نسخة احتياطية كاملة (JSON)</h4>
-                    <p class="text-slate-500 mb-2 font-normal">قم بتنزيل ملف يحتوي على كافة المشتركين والديون وسجل الدفعات لحفظه بأمان.</p>
-                    <button onclick="downloadBackupJSON()" class="w-full py-2 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-lg transition flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-download"></i>
-                        <span>تحميل نسخة احتياطية الآن</span>
-                    </button>
-                </div>
-
-                <!-- Restore -->
-                <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl">
-                    <h4 class="font-bold text-slate-800 mb-1">استعادة نسخة احتياطية</h4>
-                    <p class="text-slate-500 mb-2 font-normal">اختر ملف نسخة احتياطية سابق (.json) لاسترجاع بيانات المشتركين.</p>
-                    <label class="w-full py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-lg transition flex items-center justify-center gap-2 cursor-pointer">
-                        <i class="fa-solid fa-upload"></i>
-                        <span>اختيار ملف الاستعادة</span>
-                        <input type="file" accept=".json" onchange="restoreBackupJSON(event)" class="hidden">
-                    </label>
-                </div>
-
-                <!-- Reset Demo Data -->
-                <div class="p-3 bg-red-50 border border-red-200 rounded-xl">
-                    <h4 class="font-bold text-red-700 mb-1">إعادة ضبط المصنع أو مسح الكل</h4>
-                    <p class="text-red-500 mb-2 font-normal">تحذير: سيتم حذف جميع المشتركين والحركات والبدء من جديد.</p>
-                    <button onclick="resetAllData()" class="w-full py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition">
-                        مسح كافة البيانات وإعادة التهيئة
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Application Core Script -->
     <script>
-        // State Management
         const DB_KEY = 'generator_debts_maher_v1';
         let state = {
             settings: {
@@ -712,921 +227,253 @@
                 ownerName: 'ماهر',
                 genPhone: '07701234567',
                 defaultRate: 15000,
+                monthlyRates: { "2026-10": 15000, "2026-11": 15000 },
                 currency: 'دينار'
             },
             subscribers: [],
-            transactions: [], // { id, subId, type: 'charge'|'payment', amount, date, note, balanceAfter }
-            currentFilter: 'all',
-            currentLine: 'all',
-            currentSort: 'debt-desc'
+            transactions: []
         };
 
-        // Initialize App on DOM Load
+        const MONTH_NAMES = ["", "كانون الثاني", "شباط", "آذار", "نيسان", "أيار", "حزيران", "تموز", "آب", "أيلول", "تشرين الأول", "تشرين الثاني", "كانون الأول"];
+
         document.addEventListener('DOMContentLoaded', () => {
             loadDatabase();
-            applySettingsToUI();
-            updateStatsAndUI();
-            setDefaultDates();
+            applySettings();
+            checkUrlQueryParams();
         });
-
-        function setDefaultDates() {
-            const today = new Date().toISOString().split('T')[0];
-            const paymentDateInput = document.getElementById('paymentDate');
-            if (paymentDateInput) paymentDateInput.value = today;
-            const currentYear = new Date().getFullYear();
-            const genYearInput = document.getElementById('genYearInput');
-            if (genYearInput) genYearInput.value = currentYear;
-            const currentMonth = new Date().getMonth() + 1;
-            const genMonthSelect = document.getElementById('genMonthSelect');
-            if (genMonthSelect) genMonthSelect.value = currentMonth;
-        }
-
-        // Save & Load Database (LocalStorage)
-        function saveDatabase() {
-            try {
-                localStorage.setItem(DB_KEY, JSON.stringify(state));
-            } catch (e) {
-                console.error("Storage error:", e);
-            }
-        }
 
         function loadDatabase() {
             const raw = localStorage.getItem(DB_KEY);
             if (raw) {
                 try {
                     state = JSON.parse(raw);
+                    if (!state.settings.monthlyRates) state.settings.monthlyRates = { "2026-10": 15000, "2026-11": 15000 };
                 } catch (e) {
-                    console.error("Failed to parse DB, seeding default", e);
-                    seedDefaultData();
+                    console.error("DB error", e);
                 }
-            } else {
-                seedDefaultData();
             }
         }
 
-        // Initial Seed Demo Data
-        function seedDefaultData() {
-            state.settings = {
-                genName: 'مولدة الأمانة',
-                ownerName: 'ماهر',
-                genPhone: '07701234567',
-                defaultRate: 15000,
-                currency: 'دينار'
-            };
-
-            const sampleSubs = [
-                { id: 'sub_1', name: 'أحمد جاسم كريم', phone: '07701122334', line: 'الخط الأول - الشارع العام', amperes: 5, customRate: null, currentDebt: 30000, status: 'active', notes: 'عمود رقم 4' },
-                { id: 'sub_2', name: 'حيدر عبد الحسين', phone: '07802233445', line: 'الخط الأول - زقاق 12', amperes: 4, customRate: null, currentDebt: 60000, status: 'active', notes: 'محل بقالة' },
-                { id: 'sub_3', name: 'محمد علي رضا', phone: '07713344556', line: 'الخط الثاني - فرع الجامع', amperes: 6, customRate: null, currentDebt: 0, status: 'active', notes: 'مسدد بانتظام' },
-                { id: 'sub_4', name: 'عمر فاروق حسن', phone: '07504455667', line: 'الخط الثاني - فرع الجامع', amperes: 3, customRate: null, currentDebt: 45000, status: 'active', notes: 'دار 15' },
-                { id: 'sub_5', name: 'سعدون كاظم ناصر', phone: '07815566778', line: 'الخط الثالث - شارع السوق', amperes: 10, customRate: 14000, currentDebt: 140000, status: 'active', notes: 'سوبرماركت البركة' },
-                { id: 'sub_6', name: 'ضرغام جواد كاظم', phone: '07726677889', line: 'الخط الثالث - شارع السوق', amperes: 2, customRate: null, currentDebt: 15000, status: 'inactive', notes: 'مفصول مؤقتاً بداعي السفر' }
-            ];
-
-            const sampleTransactions = [
-                { id: 'tx_1', subId: 'sub_1', type: 'charge', amount: 75000, date: '2026-10-01', note: 'اشتراك شهر تشرين الأول (5 أمبير)', balanceAfter: 75000 },
-                { id: 'tx_2', subId: 'sub_1', type: 'payment', amount: 45000, date: '2026-10-15', note: 'تسديد دفعة نقدية', balanceAfter: 30000 },
-                { id: 'tx_3', subId: 'sub_2', type: 'charge', amount: 60000, date: '2026-10-01', note: 'اشتراك شهر تشرين الأول (4 أمبير)', balanceAfter: 60000 },
-                { id: 'tx_4', subId: 'sub_3', type: 'charge', amount: 90000, date: '2026-10-01', note: 'اشتراك شهر تشرين الأول (6 أمبير)', balanceAfter: 90000 },
-                { id: 'tx_5', subId: 'sub_3', type: 'payment', amount: 90000, date: '2026-10-05', note: 'تسديد كامل الاشتراك', balanceAfter: 0 }
-            ];
-
-            state.subscribers = sampleSubs;
-            state.transactions = sampleTransactions;
-            saveDatabase();
+        function getMonthRate(month, year) {
+            const key = `${year}-${month.toString().padStart(2, '0')}`;
+            if (state.settings && state.settings.monthlyRates && state.settings.monthlyRates[key]) {
+                return state.settings.monthlyRates[key];
+            }
+            return state.settings ? (state.settings.defaultRate || 15000) : 15000;
         }
 
-        // Apply Settings
-        function applySettingsToUI() {
-            const s = state.settings;
-            document.getElementById('appHeaderTitle').textContent = s.genName;
-            document.getElementById('appOwnerSubtitle').textContent = `لوحة تحكم السيد ${s.ownerName} لمتابعة الاشتراكات والديون`;
-            document.getElementById('statDefaultRate').textContent = formatCurrency(s.defaultRate, false);
-            document.getElementById('currentCurrencyLabel').textContent = `${s.currency} / أمبير`;
-            
-            // Populate Settings Modal Inputs
-            document.getElementById('settingGenName').value = s.genName;
-            document.getElementById('settingOwnerName').value = s.ownerName;
-            document.getElementById('settingGenPhone').value = s.genPhone;
-            document.getElementById('settingDefaultRate').value = s.defaultRate;
-            document.getElementById('settingCurrency').value = s.currency;
-            document.getElementById('genMonthRate').value = s.defaultRate;
+        function applySettings() {
+            const s = state.settings || {};
+            document.getElementById('portalGenName').textContent = s.genName || 'مولدة الأمانة';
+            document.getElementById('footerOwnerName').textContent = s.ownerName || 'ماهر';
+
+            const cleanPhone = (s.genPhone || '').replace(/[^0-9]/g, '');
+            const contactBtn = document.getElementById('contactOwnerBtn');
+            if (contactBtn) {
+                contactBtn.href = `https://wa.me/964${cleanPhone.startsWith('0') ? cleanPhone.substring(1) : cleanPhone}?text=${encodeURIComponent('السلام عليكم، أريد الاستفسار عن اشتراكي في المولدة')}`;
+            }
         }
 
-        function saveSettings(e) {
+        function checkUrlQueryParams() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const phoneParam = urlParams.get('phone');
+            if (phoneParam) {
+                document.getElementById('custSearchInput').value = phoneParam;
+                executeSearch(phoneParam);
+            }
+        }
+
+        function searchSubscriber(e) {
             e.preventDefault();
-            state.settings.genName = document.getElementById('settingGenName').value.trim();
-            state.settings.ownerName = document.getElementById('settingOwnerName').value.trim();
-            state.settings.genPhone = document.getElementById('settingGenPhone').value.trim();
-            state.settings.defaultRate = parseFloat(document.getElementById('settingDefaultRate').value) || 0;
-            state.settings.currency = document.getElementById('settingCurrency').value.trim();
-
-            saveDatabase();
-            applySettingsToUI();
-            updateStatsAndUI();
-            closeModal('settingsModal');
-            showToast('تم حفظ الإعدادات بنجاح');
+            const query = document.getElementById('custSearchInput').value.trim();
+            if (!query) return;
+            executeSearch(query);
         }
 
-        // Update Statistics & UI
-        function updateStatsAndUI() {
-            let totalDebt = 0;
-            let debtCount = 0;
-            let totalAmperes = 0;
-            let activeCount = 0;
-
-            state.subscribers.forEach(sub => {
-                if (sub.currentDebt > 0) {
-                    totalDebt += sub.currentDebt;
-                    debtCount++;
-                }
-                if (sub.status === 'active') {
-                    activeCount++;
-                    totalAmperes += (sub.amperes || 0);
-                }
-            });
-
-            // Calculate payments total
-            let totalPayments = 0;
-            state.transactions.forEach(t => {
-                if (t.type === 'payment') totalPayments += t.amount;
-            });
-
-            // Update DOM Cards
-            document.getElementById('statTotalDebt').textContent = formatCurrency(totalDebt);
-            document.getElementById('statDebtCount').textContent = `${debtCount} مشترك عليهم ديون`;
-
-            document.getElementById('statTotalCollected').textContent = formatCurrency(totalPayments);
-            document.getElementById('statPaymentCount').textContent = `${state.transactions.filter(t => t.type === 'payment').length} دفعة مسجلة`;
-
-            document.getElementById('statTotalSubscribers').textContent = state.subscribers.length;
-            document.getElementById('statActiveSubscribers').textContent = `${activeCount} نشط حالياً`;
-
-            document.getElementById('statTotalAmperes').textContent = totalAmperes;
-
-            // Update Counts in tabs
-            document.getElementById('count_all').textContent = state.subscribers.length;
-            document.getElementById('count_debt').textContent = debtCount;
-            document.getElementById('count_paid').textContent = state.subscribers.filter(s => s.currentDebt <= 0).length;
-            document.getElementById('count_inactive').textContent = state.subscribers.filter(s => s.status === 'inactive').length;
-
-            updateLineFilterDropdown();
-            updatePaymentSubscriberSelect();
-            filterSubscribers();
-        }
-
-        // Update Line Filter Dropdown Options
-        function updateLineFilterDropdown() {
-            const select = document.getElementById('lineFilter');
-            const currentVal = select.value;
-            const lines = new Set();
-            state.subscribers.forEach(s => {
-                if (s.line && s.line.trim()) lines.add(s.line.trim());
-            });
-
-            let html = '<option value="all">جميع الخطوط والشوارع</option>';
-            lines.forEach(line => {
-                html += `<option value="${escapeHtml(line)}" ${currentVal === line ? 'selected' : ''}>${escapeHtml(line)}</option>`;
-            });
-            select.innerHTML = html;
-        }
-
-        // Update Subscriber Select for Payment Modal
-        function updatePaymentSubscriberSelect() {
-            const select = document.getElementById('paymentSubscriberSelect');
-            let html = '<option value="">-- اختر المشترك من القائمة --</option>';
+        function executeSearch(query) {
+            const cleanQuery = query.toLowerCase().replace(/[^0-9a-zA-Z\u0600-\u06FF]/g, '');
             
-            // Sort by debt desc so people with debts are on top
-            const sorted = [...state.subscribers].sort((a, b) => b.currentDebt - a.currentDebt);
-            sorted.forEach(sub => {
-                const debtTxt = sub.currentDebt > 0 ? ` (عليه دين: ${formatCurrency(sub.currentDebt)})` : ' (خالص)';
-                html += `<option value="${sub.id}">${escapeHtml(sub.name)} - ${sub.amperes} أمبير${debtTxt}</option>`;
+            const sub = state.subscribers.find(s => {
+                const subPhone = (s.phone || '').replace(/[^0-9]/g, '');
+                const subName = (s.name || '').toLowerCase();
+                return (subPhone && subPhone.includes(cleanQuery)) || subName.includes(query.toLowerCase());
             });
-            select.innerHTML = html;
-        }
-
-        // Filter & Render Table
-        function filterSubscribers() {
-            const search = document.getElementById('searchInput').value.trim().toLowerCase();
-            const line = document.getElementById('lineFilter').value;
-            const sort = document.getElementById('sortBy').value;
-            const tbody = document.getElementById('subscribersTableBody');
-            const emptyState = document.getElementById('emptyState');
-
-            let filtered = state.subscribers.filter(sub => {
-                // Status Filter
-                if (state.currentFilter === 'debt' && sub.currentDebt <= 0) return false;
-                if (state.currentFilter === 'paid' && sub.currentDebt > 0) return false;
-                if (state.currentFilter === 'inactive' && sub.status !== 'inactive') return false;
-
-                // Line Filter
-                if (line !== 'all' && sub.line !== line) return false;
-
-                // Search query
-                if (search) {
-                    const matchName = (sub.name || '').toLowerCase().includes(search);
-                    const matchPhone = (sub.phone || '').includes(search);
-                    const matchLine = (sub.line || '').toLowerCase().includes(search);
-                    const matchNotes = (sub.notes || '').toLowerCase().includes(search);
-                    if (!matchName && !matchPhone && !matchLine && !matchNotes) return false;
-                }
-                return true;
-            });
-
-            // Sorting
-            filtered.sort((a, b) => {
-                if (sort === 'debt-desc') return b.currentDebt - a.currentDebt;
-                if (sort === 'debt-asc') return a.currentDebt - b.currentDebt;
-                if (sort === 'name-asc') return a.name.localeCompare(b.name, 'ar');
-                if (sort === 'amperes-desc') return (b.amperes || 0) - (a.amperes || 0);
-                if (sort === 'recent') return (b.id || '').localeCompare(a.id || '');
-                return 0;
-            });
-
-            if (filtered.length === 0) {
-                tbody.innerHTML = '';
-                emptyState.classList.remove('hidden');
-                return;
-            }
-
-            emptyState.classList.add('hidden');
-
-            let html = '';
-            filtered.forEach((sub, idx) => {
-                const effectiveRate = sub.customRate || state.settings.defaultRate;
-                const monthlyCharge = (sub.amperes || 0) * effectiveRate;
-                const isDebt = sub.currentDebt > 0;
-                const isPaid = sub.currentDebt === 0;
-
-                // WhatsApp Link
-                const cleanPhone = (sub.phone || '').replace(/[^0-9]/g, '');
-                const waMessage = encodeURIComponent(`مرحباً أخي العزيز ${sub.name}، نود تذكيركم بأن رصيد اشتراك المولدة المطلوب في ذمتكم هو (${formatCurrency(sub.currentDebt)}) لـ (${sub.amperes} أمبير). دمتم بخير.`);
-                const waLink = cleanPhone ? `https://wa.me/964${cleanPhone.startsWith('0') ? cleanPhone.substring(1) : cleanPhone}?text=${waMessage}` : '#';
-
-                html += `
-                <tr class="hover:bg-slate-50/80 transition duration-150">
-                    <td class="py-3 px-4 font-mono text-xs text-slate-400">${idx + 1}</td>
-                    <td class="py-3 px-4">
-                        <div class="font-bold text-slate-900">${escapeHtml(sub.name)}</div>
-                        <div class="flex items-center gap-2 text-xs text-slate-500 mt-0.5">
-                            ${sub.phone ? `
-                                <span><i class="fa-solid fa-phone text-[10px] ml-1"></i>${escapeHtml(sub.phone)}</span>
-                                <a href="${waLink}" target="_blank" class="text-emerald-600 hover:text-emerald-700 font-bold flex items-center gap-1" title="مراسلة واتساب">
-                                    <i class="fa-brands fa-whatsapp"></i>
-                                </a>
-                            ` : '<span class="text-slate-400">بدون هاتف</span>'}
-                        </div>
-                    </td>
-                    <td class="py-3 px-4 text-xs text-slate-600">
-                        <div><i class="fa-solid fa-location-dot text-slate-400 ml-1"></i>${escapeHtml(sub.line || 'غير محدد')}</div>
-                        ${sub.notes ? `<div class="text-[11px] text-slate-400 truncate max-w-xs">${escapeHtml(sub.notes)}</div>` : ''}
-                    </td>
-                    <td class="py-3 px-4 text-center">
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
-                            ${sub.amperes} أمبير
-                        </span>
-                    </td>
-                    <td class="py-3 px-4 text-center font-semibold text-slate-700">
-                        ${formatCurrency(monthlyCharge)}
-                        ${sub.customRate ? '<span class="text-[10px] text-amber-600 block">(سعر مخصص)</span>' : ''}
-                    </td>
-                    <td class="py-3 px-4 text-center">
-                        ${isDebt ? `
-                            <span class="text-sm font-black text-red-600 bg-red-50 border border-red-200 px-2.5 py-1 rounded-lg inline-block">
-                                ${formatCurrency(sub.currentDebt)}
-                            </span>
-                        ` : `
-                            <span class="text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg inline-block">
-                                خالص (0)
-                            </span>
-                        `}
-                    </td>
-                    <td class="py-3 px-4 text-center">
-                        ${sub.status === 'active' ? `
-                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800">
-                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> نشط
-                            </span>
-                        ` : `
-                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-200 text-slate-700">
-                                <span class="w-1.5 h-1.5 rounded-full bg-slate-500"></span> متوقف
-                            </span>
-                        `}
-                    </td>
-                    <td class="py-3 px-4 text-center no-print">
-                        <div class="flex items-center justify-center gap-1">
-                            <button onclick="openPaymentForSub('${sub.id}')" title="تسجيل دفعة" 
-                                class="p-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-md transition text-xs font-bold flex items-center gap-1">
-                                <i class="fa-solid fa-money-bill-wave"></i>
-                                <span class="hidden xl:inline">قبض</span>
-                            </button>
-                            <button onclick="openStatementModal('${sub.id}')" title="كشف حساب الحركات" 
-                                class="p-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-md transition text-xs">
-                                <i class="fa-solid fa-file-lines"></i>
-                            </button>
-                            <button onclick="editSubscriber('${sub.id}')" title="تعديل" 
-                                class="p-1.5 bg-slate-100 text-blue-600 hover:bg-blue-50 rounded-md transition text-xs">
-                                <i class="fa-solid fa-pen-to-square"></i>
-                            </button>
-                            <button onclick="deleteSubscriber('${sub.id}')" title="حذف" 
-                                class="p-1.5 bg-slate-100 text-red-600 hover:bg-red-50 rounded-md transition text-xs">
-                                <i class="fa-solid fa-trash-can"></i>
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-                `;
-            });
-            tbody.innerHTML = html;
-        }
-
-        function setStatusFilter(filter) {
-            state.currentFilter = filter;
-            ['all', 'debt', 'paid', 'inactive'].forEach(f => {
-                const btn = document.getElementById(`tab_${f}`);
-                if (f === filter) {
-                    btn.className = "px-3 py-1.5 rounded-md font-bold transition bg-white shadow-sm text-brand-700";
-                } else {
-                    btn.className = "px-3 py-1.5 rounded-md font-bold transition text-slate-600 hover:text-slate-900";
-                }
-            });
-            filterSubscribers();
-        }
-
-        // Add / Edit Subscriber Logic
-        function calculateSubMonthly() {
-            const amps = parseFloat(document.getElementById('subAmperes').value) || 0;
-            const customRate = parseFloat(document.getElementById('subRate').value);
-            const rate = !isNaN(customRate) && customRate > 0 ? customRate : state.settings.defaultRate;
-            const total = amps * rate;
-            document.getElementById('subMonthlyPreview').value = formatCurrency(total);
-        }
-
-        function saveSubscriber(e) {
-            e.preventDefault();
-            const id = document.getElementById('subId').value;
-            const name = document.getElementById('subName').value.trim();
-            const phone = document.getElementById('subPhone').value.trim();
-            const line = document.getElementById('subLine').value.trim();
-            const amperes = parseFloat(document.getElementById('subAmperes').value) || 1;
-            const customRateInput = document.getElementById('subRate').value.trim();
-            const customRate = customRateInput ? parseFloat(customRateInput) : null;
-            const debt = parseFloat(document.getElementById('subDebt').value) || 0;
-            const status = document.getElementById('subStatus').value;
-            const notes = document.getElementById('subNotes').value.trim();
-
-            if (id) {
-                // Update Existing
-                const idx = state.subscribers.findIndex(s => s.id === id);
-                if (idx !== -1) {
-                    const oldDebt = state.subscribers[idx].currentDebt;
-                    state.subscribers[idx].name = name;
-                    state.subscribers[idx].phone = phone;
-                    state.subscribers[idx].line = line;
-                    state.subscribers[idx].amperes = amperes;
-                    state.subscribers[idx].customRate = customRate;
-                    state.subscribers[idx].currentDebt = debt;
-                    state.subscribers[idx].status = status;
-                    state.subscribers[idx].notes = notes;
-
-                    // If debt changed manually, log an adjustment transaction
-                    if (oldDebt !== debt) {
-                        const diff = debt - oldDebt;
-                        state.transactions.push({
-                            id: 'tx_' + Date.now(),
-                            subId: id,
-                            type: diff > 0 ? 'charge' : 'payment',
-                            amount: Math.abs(diff),
-                            date: new Date().toISOString().split('T')[0],
-                            note: 'تعديل يدوي للرصيد',
-                            balanceAfter: debt
-                        });
-                    }
-                }
-            } else {
-                // Create New
-                const newId = 'sub_' + Date.now();
-                const newSub = {
-                    id: newId,
-                    name,
-                    phone,
-                    line,
-                    amperes,
-                    customRate,
-                    currentDebt: debt,
-                    status,
-                    notes
-                };
-                state.subscribers.push(newSub);
-
-                if (debt > 0) {
-                    state.transactions.push({
-                        id: 'tx_' + Date.now(),
-                        subId: newId,
-                        type: 'charge',
-                        amount: debt,
-                        date: new Date().toISOString().split('T')[0],
-                        note: 'رصيد افتتاحي عند التسجيل',
-                        balanceAfter: debt
-                    });
-                }
-            }
-
-            saveDatabase();
-            updateStatsAndUI();
-            closeModal('newSubscriberModal');
-            showToast('تم حفظ بيانات المشترك بنجاح');
-        }
-
-        function editSubscriber(id) {
-            const sub = state.subscribers.find(s => s.id === id);
-            if (!sub) return;
-
-            document.getElementById('subId').value = sub.id;
-            document.getElementById('subName').value = sub.name;
-            document.getElementById('subPhone').value = sub.phone || '';
-            document.getElementById('subLine').value = sub.line || '';
-            document.getElementById('subAmperes').value = sub.amperes;
-            document.getElementById('subRate').value = sub.customRate || '';
-            document.getElementById('subDebt').value = sub.currentDebt;
-            document.getElementById('subStatus').value = sub.status;
-            document.getElementById('subNotes').value = sub.notes || '';
-
-            document.getElementById('subscriberModalTitle').innerHTML = `
-                <i class="fa-solid fa-pen-to-square text-blue-600"></i>
-                <span>تعديل بيانات المشترك: ${escapeHtml(sub.name)}</span>
-            `;
-
-            calculateSubMonthly();
-            openModal('newSubscriberModal');
-        }
-
-        function deleteSubscriber(id) {
-            const sub = state.subscribers.find(s => s.id === id);
-            if (!sub) return;
-
-            const confirmMsg = `هل أنت متأكد من حذف المشترك (${sub.name})؟\n\nتنبيه: سيتم حذف كافة حركاته المالية المسجلة.`;
-            if (confirm(confirmMsg)) {
-                state.subscribers = state.subscribers.filter(s => s.id !== id);
-                state.transactions = state.transactions.filter(t => t.subId !== id);
-                saveDatabase();
-                updateStatsAndUI();
-                showToast('تم حذف المشترك بنجاح');
-            }
-        }
-
-        // Payments Logic
-        function openPaymentForSub(subId) {
-            openModal('quickPaymentModal');
-            const select = document.getElementById('paymentSubscriberSelect');
-            select.value = subId;
-            onPaymentSubscriberChange();
-        }
-
-        function onPaymentSubscriberChange() {
-            const subId = document.getElementById('paymentSubscriberSelect').value;
-            const detailsDiv = document.getElementById('paymentSubscriberDetails');
-            const sub = state.subscribers.find(s => s.id === subId);
 
             if (!sub) {
-                detailsDiv.classList.add('hidden');
+                document.getElementById('subscriberResultCard').classList.add('hidden');
+                document.getElementById('notFoundBox').classList.remove('hidden');
                 return;
             }
 
-            detailsDiv.classList.remove('hidden');
-            document.getElementById('paymentCurrentDebt').textContent = formatCurrency(sub.currentDebt);
-            const rate = sub.customRate || state.settings.defaultRate;
-            document.getElementById('paymentMonthlyRate').textContent = `${formatCurrency(sub.amperes * rate)} (${sub.amperes} أمبير)`;
-
-            // Pre-fill amount with current debt if positive
-            if (sub.currentDebt > 0 && !document.getElementById('paymentAmount').value) {
-                document.getElementById('paymentAmount').value = sub.currentDebt;
-            }
+            const subTx = state.transactions.filter(t => t.subId === sub.id).sort((a, b) => new Date(b.date) - new Date(a.date));
+            displayCustomerData(sub, subTx);
         }
 
-        function payFullDebt() {
-            const subId = document.getElementById('paymentSubscriberSelect').value;
-            const sub = state.subscribers.find(s => s.id === subId);
-            if (sub && sub.currentDebt > 0) {
-                document.getElementById('paymentAmount').value = sub.currentDebt;
-            }
-        }
+        function displayCustomerData(sub, txList) {
+            document.getElementById('notFoundBox').classList.add('hidden');
+            const card = document.getElementById('subscriberResultCard');
+            card.classList.remove('hidden');
 
-        function setQuickAmount(amt) {
-            document.getElementById('paymentAmount').value = amt;
-        }
+            const currency = state.settings.currency || 'دينار';
+            const now = new Date();
+            const curMonthRate = getMonthRate(now.getMonth() + 1, now.getFullYear());
+            const rate = sub.customRate || curMonthRate;
 
-        function submitPayment(e) {
-            e.preventDefault();
-            const subId = document.getElementById('paymentSubscriberSelect').value;
-            const amount = parseFloat(document.getElementById('paymentAmount').value);
-            const date = document.getElementById('paymentDate').value;
-            const note = document.getElementById('paymentNote').value.trim() || 'تسديد دفعة نقدية';
-            const shouldPrint = document.getElementById('printReceiptAfterPay').checked;
+            document.getElementById('resSubName').textContent = sub.name;
+            document.getElementById('resSubPhone').textContent = sub.phone ? `هاتف: ${sub.phone}` : 'بدون رقم هاتف';
+            document.getElementById('resAmperes').textContent = `${sub.amperes} أمبير`;
+            document.getElementById('resMonthlyRate').textContent = `${rate.toLocaleString()} ${currency} / أمبير`;
+            document.getElementById('resCurrentDebt').textContent = `${(sub.currentDebt || 0).toLocaleString()} ${currency}`;
 
-            if (!subId || isNaN(amount) || amount <= 0) {
-                alert('يرجى اختيار المشترك وتحديد مبلغ صحيح');
-                return;
+            const badge = document.getElementById('resSubBadge');
+            if (sub.currentDebt > 0) {
+                badge.className = "inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800";
+                badge.textContent = `مطلوب دين: ${(sub.currentDebt).toLocaleString()} ${currency}`;
+            } else {
+                badge.className = "inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800";
+                badge.textContent = "خالص - لا يوجد ديون";
             }
 
-            const sub = state.subscribers.find(s => s.id === subId);
-            if (!sub) return;
+            renderMonthlyBreakdown(sub, txList, currency);
 
-            const oldDebt = sub.currentDebt;
-            const newDebt = oldDebt - amount;
-            sub.currentDebt = newDebt;
-
-            const txId = 'tx_' + Date.now();
-            const tx = {
-                id: txId,
-                subId: sub.id,
-                type: 'payment',
-                amount: amount,
-                date: date,
-                note: note,
-                balanceAfter: newDebt
-            };
-            state.transactions.push(tx);
-
-            saveDatabase();
-            updateStatsAndUI();
-            closeModal('quickPaymentModal');
-            showToast(`تم تسجيل دفعة بقيمة ${formatCurrency(amount)} للمشترك ${sub.name}`);
-
-            if (shouldPrint) {
-                prepareAndPrintReceipt({
-                    receiptId: txId.substring(3),
-                    date: date,
-                    customerName: sub.name,
-                    amperes: sub.amperes,
-                    amount: amount,
-                    oldDebt: oldDebt,
-                    newDebt: newDebt,
-                    notes: note
-                });
-            }
-        }
-
-        // Print Thermal Receipt
-        function prepareAndPrintReceipt(data) {
-            document.getElementById('rcptGeneratorName').textContent = state.settings.genName;
-            document.getElementById('rcptPhone').textContent = `هاتف: ${state.settings.genPhone || '-'}`;
-            document.getElementById('rcptId').textContent = '#' + data.receiptId;
-            document.getElementById('rcptDate').textContent = data.date;
-            document.getElementById('rcptCustomer').textContent = data.customerName;
-            document.getElementById('rcptAmperes').textContent = `${data.amperes} أمبير`;
-            document.getElementById('rcptAmount').textContent = formatCurrency(data.amount);
-            document.getElementById('rcptOldDebt').textContent = formatCurrency(data.oldDebt);
-            document.getElementById('rcptNewDebt').textContent = formatCurrency(data.newDebt);
-            document.getElementById('rcptNotes').textContent = data.notes || '-';
-
-            // Show and print
-            window.print();
-        }
-
-        // Generate Month Dues Logic
-        function executeGenerateMonth(e) {
-            e.preventDefault();
-            const month = document.getElementById('genMonthSelect').value;
-            const year = document.getElementById('genYearInput').value;
-            const rate = parseFloat(document.getElementById('genMonthRate').value) || state.settings.defaultRate;
-            const includeInactive = document.getElementById('genIncludeInactive').checked;
-
-            const monthNames = ["", "كانون الثاني", "شباط", "آذار", "نيسان", "أيار", "حزيران", "تموز", "آب", "أيلول", "تشرين الأول", "تشرين الثاني", "كانون الأول"];
-            const monthLabel = `${monthNames[month]} (${month}/${year})`;
-
-            const eligibleSubs = state.subscribers.filter(s => includeInactive || s.status === 'active');
-            if (eligibleSubs.length === 0) {
-                alert('لا يوجد مشتركين مؤهلين لتوليد الاشتراك');
-                return;
-            }
-
-            const confirmMsg = `هل أنت متأكد من ترحيل اشتراك شهر ${monthLabel}؟\n\nعدد المشتركين المستهدفين: ${eligibleSubs.length}\nسيتم إضافة قيمة اشتراك كل مشترك إلى رصيد ديونه.`;
-            if (!confirm(confirmMsg)) return;
-
-            const today = new Date().toISOString().split('T')[0];
-            let totalAdded = 0;
-
-            eligibleSubs.forEach(sub => {
-                const subRate = sub.customRate || rate;
-                const chargeAmount = (sub.amperes || 0) * subRate;
-                sub.currentDebt = (sub.currentDebt || 0) + chargeAmount;
-                totalAdded += chargeAmount;
-
-                state.transactions.push({
-                    id: 'tx_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
-                    subId: sub.id,
-                    type: 'charge',
-                    amount: chargeAmount,
-                    date: today,
-                    note: `اشتراك شهر ${monthLabel} (${sub.amperes} أمبير × ${formatCurrency(subRate, false)})`,
-                    balanceAfter: sub.currentDebt
-                });
-            });
-
-            saveDatabase();
-            updateStatsAndUI();
-            closeModal('generateMonthModal');
-            showToast(`تم ترحيل شهر ${monthLabel} بنجاح بإجمالي مبالغ ${formatCurrency(totalAdded)}`);
-        }
-
-        // Account Statement Modal
-        function openStatementModal(subId) {
-            const sub = state.subscribers.find(s => s.id === subId);
-            if (!sub) return;
-
-            document.getElementById('statementName').textContent = `كشف حساب: ${sub.name}`;
-            document.getElementById('statementSubDetails').textContent = `الخط: ${sub.line || 'غير محدد'} | عدد الأمبيرات: ${sub.amperes} أمبير`;
-            document.getElementById('statementCurrentDebt').textContent = formatCurrency(sub.currentDebt);
-
-            // WhatsApp Share Button config
-            const cleanPhone = (sub.phone || '').replace(/[^0-9]/g, '');
-            const waMessage = encodeURIComponent(`السلام عليكم أخي ${sub.name}، كشف حسابكم لمولدة ${state.settings.genName} هو: الرصيد المطلوب حالياً (${formatCurrency(sub.currentDebt)}). مع التقدير.`);
-            const waBtn = document.getElementById('statementWhatsAppBtn');
-            waBtn.onclick = () => {
-                if (cleanPhone) {
-                    window.open(`https://wa.me/964${cleanPhone.startsWith('0') ? cleanPhone.substring(1) : cleanPhone}?text=${waMessage}`, '_blank');
-                } else {
-                    alert('المشترك لا يمتلك رقم هاتف مسجل');
-                }
-            };
-
-            // Populate table
-            const tbody = document.getElementById('statementTableBody');
-            const subTx = state.transactions.filter(t => t.subId === subId).sort((a, b) => new Date(b.date) - new Date(a.date));
-
-            if (subTx.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-slate-400">لا توجد حركات مسجلة لهذا المشترك بعد</td></tr>';
+            const tbody = document.getElementById('resTxTableBody');
+            if (!txList || txList.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="p-3 text-center text-slate-400">لا توجد حركات سابقة مسجلة</td></tr>';
             } else {
                 let html = '';
-                subTx.forEach(t => {
+                txList.slice(0, 10).forEach(t => {
                     const isPayment = t.type === 'payment';
                     html += `
                     <tr class="hover:bg-slate-50">
-                        <td class="p-2.5 font-mono text-slate-500">${t.date}</td>
-                        <td class="p-2.5">
-                            <span class="inline-block px-2 py-0.5 rounded text-[11px] font-bold ${isPayment ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">
-                                ${isPayment ? 'دفعة نقدية' : 'استحقاق اشتراك'}
+                        <td class="p-2 sm:p-2.5 font-mono text-slate-500">${escapeHtml(t.date)}</td>
+                        <td class="p-2 sm:p-2.5 font-semibold">
+                            <span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold ${isPayment ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">
+                                ${isPayment ? 'دفعة نقدية' : 'اشتراك شهر'}
                             </span>
-                            <span class="text-slate-700 mr-1.5">${escapeHtml(t.note || '-')}</span>
+                            <span class="mr-1 text-slate-700">${escapeHtml(t.note || '-')}</span>
                         </td>
-                        <td class="p-2.5 text-center font-bold text-amber-700">${!isPayment ? formatCurrency(t.amount) : '-'}</td>
-                        <td class="p-2.5 text-center font-bold text-emerald-700">${isPayment ? formatCurrency(t.amount) : '-'}</td>
-                        <td class="p-2.5 text-center font-bold ${t.balanceAfter > 0 ? 'text-red-600' : 'text-slate-700'}">${formatCurrency(t.balanceAfter)}</td>
-                        <td class="p-2.5 text-center">
-                            ${isPayment ? `
-                                <button onclick="reprintReceipt('${t.id}')" title="طباعة الوصل" class="text-slate-500 hover:text-slate-800 p-1">
-                                    <i class="fa-solid fa-print"></i>
-                                </button>
-                            ` : '-'}
-                        </td>
+                        <td class="p-2 sm:p-2.5 text-center font-bold ${isPayment ? 'text-emerald-700' : 'text-amber-700'}">${t.amount.toLocaleString()} ${escapeHtml(currency)}</td>
+                        <td class="p-2 sm:p-2.5 text-center font-mono ${t.balanceAfter > 0 ? 'text-red-600 font-bold' : 'text-slate-600'}">${t.balanceAfter.toLocaleString()} ${escapeHtml(currency)}</td>
                     </tr>
                     `;
                 });
                 tbody.innerHTML = html;
             }
 
-            openModal('statementModal');
+            const ownerPhone = (state.settings.genPhone || '').replace(/[^0-9]/g, '');
+            const msg = encodeURIComponent(`مرحباً أخي ${state.settings.ownerName || 'المسؤول'}، أنا المشترك (${sub.name})، أود تأكيد/الاستفسار عن رصيد حسابي البالغ (${(sub.currentDebt || 0).toLocaleString()} ${currency}).`);
+            document.getElementById('resWhatsAppConfirmBtn').href = `https://wa.me/964${ownerPhone.startsWith('0') ? ownerPhone.substring(1) : ownerPhone}?text=${msg}`;
+
+            card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
 
-        function reprintReceipt(txId) {
-            const tx = state.transactions.find(t => t.id === txId);
-            if (!tx) return;
-            const sub = state.subscribers.find(s => s.id === tx.subId);
-            if (!sub) return;
+        function renderMonthlyBreakdown(sub, txList, currency) {
+            const tbody = document.getElementById('resMonthlyTableBody');
+            const monthsMap = {};
 
-            prepareAndPrintReceipt({
-                receiptId: tx.id.substring(3),
-                date: tx.date,
-                customerName: sub.name,
-                amperes: sub.amperes,
-                amount: tx.amount,
-                oldDebt: tx.balanceAfter + tx.amount,
-                newDebt: tx.balanceAfter,
-                notes: tx.note
+            txList.forEach(t => {
+                let m = t.month;
+                let y = t.year;
+                if (!m || !y) {
+                    if (t.date) {
+                        const parts = t.date.split('-');
+                        y = parseInt(parts[0]);
+                        m = parseInt(parts[1]);
+                    }
+                }
+                if (m && y) {
+                    const key = `${y}-${m.toString().padStart(2, '0')}`;
+                    if (!monthsMap[key]) {
+                        monthsMap[key] = {
+                            key: key,
+                            year: y,
+                            month: m,
+                            charged: 0,
+                            paid: 0,
+                            rate: t.rate || getMonthRate(m, y)
+                        };
+                    }
+                    if (t.type === 'charge') {
+                        monthsMap[key].charged += t.amount;
+                        if (t.rate) monthsMap[key].rate = t.rate;
+                    } else if (t.type === 'payment') {
+                        monthsMap[key].paid += t.amount;
+                    }
+                }
             });
-        }
 
-        // Print Complete Debt Report
-        function printDebtReport() {
-            const debtors = state.subscribers.filter(s => s.currentDebt > 0).sort((a, b) => b.currentDebt - a.currentDebt);
-            if (debtors.length === 0) {
-                alert('لا يوجد أي مشترك عليه ديون حالياً!');
+            const sortedKeys = Object.keys(monthsMap).sort().reverse();
+
+            if (sortedKeys.length === 0) {
+                const now = new Date();
+                const curM = now.getMonth() + 1;
+                const curY = now.getFullYear();
+                const curRate = sub.customRate || getMonthRate(curM, curY);
+                const expected = (sub.amperes || 0) * curRate;
+                const isPaid = sub.currentDebt <= 0;
+
+                tbody.innerHTML = `
+                <tr>
+                    <td class="p-2 sm:p-2.5 font-bold">${MONTH_NAMES[curM]} (${curM}/${curY})</td>
+                    <td class="p-2 sm:p-2.5 text-center font-bold text-amber-700">${curRate.toLocaleString()} ${escapeHtml(currency)}</td>
+                    <td class="p-2 sm:p-2.5 text-center font-bold">${expected.toLocaleString()} ${escapeHtml(currency)}</td>
+                    <td class="p-2 sm:p-2.5 text-center font-bold text-emerald-700">${isPaid ? expected.toLocaleString() : '0'} ${escapeHtml(currency)}</td>
+                    <td class="p-2 sm:p-2.5 text-center font-bold ${isPaid ? 'text-slate-600' : 'text-red-600'}">${isPaid ? '0' : (sub.currentDebt).toLocaleString()} ${escapeHtml(currency)}</td>
+                    <td class="p-2 sm:p-2.5 text-center">
+                        <span class="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold ${isPaid ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}">
+                            ${isPaid ? 'خالص ✅' : 'مطلوب ❌'}
+                        </span>
+                    </td>
+                </tr>
+                `;
                 return;
             }
 
-            const today = new Date().toLocaleDateString('ar-IQ');
-            let totalDebt = 0;
-            debtors.forEach(d => totalDebt += d.currentDebt);
-
-            document.getElementById('printReportTitle').textContent = `كشف ديون المشتركين - ${state.settings.genName}`;
-            document.getElementById('printDate').textContent = `تاريخ الاستخراج: ${today}`;
-            document.getElementById('printTotalDebtSum').textContent = `إجمالي الديون: ${formatCurrency(totalDebt)}`;
-            document.getElementById('printSubscribersCount').textContent = `عدد المدينين: ${debtors.length}`;
-
-            const tbody = document.getElementById('printableTableBody');
             let html = '';
-            debtors.forEach((s, idx) => {
-                const effectiveRate = s.customRate || state.settings.defaultRate;
-                const monthly = s.amperes * effectiveRate;
+            sortedKeys.forEach(k => {
+                const item = monthsMap[k];
+                const monthName = MONTH_NAMES[item.month] || `شهر ${item.month}`;
+                const remaining = item.charged - item.paid;
+                const rateUsed = item.rate || getMonthRate(item.month, item.year);
+
+                let statusBadge = '';
+                if (remaining <= 0 && item.charged > 0) {
+                    statusBadge = '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">مسدد بالكامل</span>';
+                } else if (item.paid > 0 && remaining > 0) {
+                    statusBadge = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">مسدد جزئياً</span>`;
+                } else if (item.charged > 0 && item.paid === 0) {
+                    statusBadge = '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-800">لم يسدد</span>';
+                } else {
+                    statusBadge = '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800">دفعة</span>';
+                }
+
                 html += `
-                <tr class="border-b">
-                    <td class="p-2 border text-center font-mono">${idx + 1}</td>
-                    <td class="p-2 border font-bold">${escapeHtml(s.name)}</td>
-                    <td class="p-2 border font-mono">${escapeHtml(s.phone || '-')}</td>
-                    <td class="p-2 border">${escapeHtml(s.line || '-')}</td>
-                    <td class="p-2 border text-center font-bold">${s.amperes}</td>
-                    <td class="p-2 border text-center">${formatCurrency(monthly, false)}</td>
-                    <td class="p-2 border text-center font-black text-red-700 bg-red-50/50">${formatCurrency(s.currentDebt)}</td>
-                    <td class="p-2 border text-center text-slate-400">_____________</td>
+                <tr class="hover:bg-slate-50 transition">
+                    <td class="p-2 sm:p-2.5 font-bold text-slate-800">
+                        ${monthName} (${item.month}/${item.year})
+                    </td>
+                    <td class="p-2 sm:p-2.5 text-center font-bold text-amber-700">${rateUsed.toLocaleString()} ${escapeHtml(currency)}</td>
+                    <td class="p-2 sm:p-2.5 text-center font-bold text-slate-700">${item.charged > 0 ? item.charged.toLocaleString() + ' ' + escapeHtml(currency) : '-'}</td>
+                    <td class="p-2 sm:p-2.5 text-center font-bold text-emerald-700">${item.paid > 0 ? item.paid.toLocaleString() + ' ' + escapeHtml(currency) : '0 ' + escapeHtml(currency)}</td>
+                    <td class="p-2 sm:p-2.5 text-center font-black ${remaining > 0 ? 'text-red-600' : 'text-slate-600'}">
+                        ${remaining > 0 ? remaining.toLocaleString() + ' ' + escapeHtml(currency) : '0 ' + escapeHtml(currency)}
+                    </td>
+                    <td class="p-2 sm:p-2.5 text-center">${statusBadge}</td>
                 </tr>
                 `;
             });
+
             tbody.innerHTML = html;
-
-            window.print();
-        }
-
-        // Excel Export & Import
-        function exportToExcel() {
-            if (state.subscribers.length === 0) {
-                alert('لا توجد بيانات لتصديرها');
-                return;
-            }
-
-            const rows = state.subscribers.map((s, idx) => {
-                const effectiveRate = s.customRate || state.settings.defaultRate;
-                return {
-                    "ت": idx + 1,
-                    "اسم المشترك": s.name,
-                    "رقم الهاتف": s.phone || '',
-                    "الخط / العنوان": s.line || '',
-                    "عدد الأمبيرات": s.amperes,
-                    "سعر الأمبير": effectiveRate,
-                    "الاشتراك الشهري": s.amperes * effectiveRate,
-                    "الدين المطلوب": s.currentDebt,
-                    "حالة الاشتراك": s.status === 'active' ? 'نشط' : 'متوقف',
-                    "ملاحظات": s.notes || ''
-                };
-            });
-
-            const worksheet = XLSX.utils.json_to_sheet(rows);
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "المشتركين والديون");
-
-            const fileName = `ديون_${state.settings.genName}_${new Date().toISOString().split('T')[0]}.xlsx`;
-            XLSX.writeFile(workbook, fileName);
-            showToast('تم تصدير ملف Excel بنجاح');
-        }
-
-        function importFromExcel(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
-                    const sheetName = workbook.SheetNames[0];
-                    const sheet = workbook.Sheets[sheetName];
-                    const json = XLSX.utils.sheet_to_json(sheet);
-
-                    if (json.length === 0) {
-                        alert('الملف فارغ أو غير متوافق');
-                        return;
-                    }
-
-                    let addedCount = 0;
-                    json.forEach(row => {
-                        const name = row["اسم المشترك"] || row["الاسم"] || row["Name"];
-                        if (name) {
-                            const amps = parseFloat(row["عدد الأمبيرات"] || row["أمبير"] || 5);
-                            const debt = parseFloat(row["الدين المطلوب"] || row["الدين"] || 0);
-                            const phone = String(row["رقم الهاتف"] || row["الهاتف"] || '');
-                            const line = row["الخط / العنوان"] || row["العنوان"] || '';
-                            const notes = row["ملاحظات"] || '';
-
-                            state.subscribers.push({
-                                id: 'sub_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
-                                name: String(name).trim(),
-                                phone: phone.trim(),
-                                line: line.trim(),
-                                amperes: amps,
-                                customRate: null,
-                                currentDebt: debt,
-                                status: 'active',
-                                notes: notes
-                            });
-                            addedCount++;
-                        }
-                    });
-
-                    saveDatabase();
-                    updateStatsAndUI();
-                    showToast(`تم استيراد ${addedCount} مشترك بنجاح من Excel`);
-                } catch (err) {
-                    console.error("Import error:", err);
-                    alert('حدث خطأ أثناء قراءة ملف Excel');
-                }
-            };
-            reader.readAsArrayBuffer(file);
-            event.target.value = '';
-        }
-
-        // Backup & Restore JSON
-        function downloadBackupJSON() {
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state, null, 2));
-            const dlAnchor = document.createElement('a');
-            dlAnchor.setAttribute("href", dataStr);
-            dlAnchor.setAttribute("download", `نسخة_احتياطية_${state.settings.genName}_${new Date().toISOString().split('T')[0]}.json`);
-            dlAnchor.click();
-            showToast('تم تحميل النسخة الاحتياطية بنجاح');
-        }
-
-        function restoreBackupJSON(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    const parsed = JSON.parse(e.target.result);
-                    if (parsed.subscribers && Array.isArray(parsed.subscribers)) {
-                        state = parsed;
-                        saveDatabase();
-                        applySettingsToUI();
-                        updateStatsAndUI();
-                        closeModal('backupModal');
-                        showToast('تمت استعادة النسخة الاحتياطية بنجاح');
-                    } else {
-                        alert('الملف غير صالح أو لا يحتوي على بنية بيانات صحيحة');
-                    }
-                } catch (err) {
-                    alert('فشل قراءة ملف النسخة الاحتياطية');
-                }
-            };
-            reader.readAsText(file);
-            event.target.value = '';
-        }
-
-        function resetAllData() {
-            if (confirm("هل أنت متأكد تماماً من رغبتك في حذف كافة المشتركين والبدء من الصفر؟ لا يمكن التراجع عن هذا الإجراء!")) {
-                state.subscribers = [];
-                state.transactions = [];
-                saveDatabase();
-                updateStatsAndUI();
-                closeModal('backupModal');
-                showToast('تم مسح كافة البيانات بنجاح');
-            }
-        }
-
-        // Helpers
-        function formatCurrency(val, includeSymbol = true) {
-            const formatted = Math.round(val || 0).toLocaleString('en-US');
-            return includeSymbol ? `${formatted} ${state.settings.currency}` : formatted;
         }
 
         function escapeHtml(text) {
-            if (!text) return '';
+            if (text === null || text === undefined) return '';
             return String(text)
                 .replace(/&/g, "&amp;")
                 .replace(/</g, "&lt;")
                 .replace(/>/g, "&gt;")
                 .replace(/"/g, "&quot;")
                 .replace(/'/g, "&#039;");
-        }
-
-        function openModal(id) {
-            if (id === 'newSubscriberModal' && !document.getElementById('subId').value) {
-                document.getElementById('subscriberForm').reset();
-                document.getElementById('subId').value = '';
-                document.getElementById('subscriberModalTitle').innerHTML = `
-                    <i class="fa-solid fa-user-plus text-brand-600"></i>
-                    <span>إضافة مشترك جديد</span>
-                `;
-                calculateSubMonthly();
-            }
-            document.getElementById(id).classList.remove('hidden');
-        }
-
-        function closeModal(id) {
-            document.getElementById(id).classList.add('hidden');
-        }
-
-        function showToast(message) {
-            const existing = document.getElementById('toastNotification');
-            if (existing) existing.remove();
-
-            const toast = document.createElement('div');
-            toast.id = 'toastNotification';
-            toast.className = 'fixed bottom-5 left-5 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-2xl text-xs font-bold flex items-center gap-2 z-50 transition transform translate-y-0';
-            toast.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400 text-base"></i><span>${escapeHtml(message)}</span>`;
-            document.body.appendChild(toast);
-
-            setTimeout(() => {
-                toast.classList.add('opacity-0', 'translate-y-2');
-                setTimeout(() => toast.remove(), 300);
-            }, 3000);
         }
     </script>
 </body>

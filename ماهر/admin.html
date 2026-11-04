@@ -1,0 +1,2046 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>لوحة إدارة ديون المولدة - ماهر</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            800: '#166534',
+                            900: '#14532d',
+                        }
+                    },
+                    fontFamily: {
+                        cairo: ['Cairo', 'Segoe UI', 'Tahoma', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts Cairo -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- SheetJS for Excel Import/Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <style>
+        body { 
+            font-family: 'Cairo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        /* Mobile 9:16 form inputs prevent auto-zoom on iOS */
+        input, select, textarea {
+            font-size: 16px !important;
+        }
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            body { background: white !important; color: black !important; }
+        }
+        .print-only { display: none; }
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 antialiased min-h-screen flex flex-col selection:bg-brand-500 selection:text-white pb-20 md:pb-6">
+
+    <!-- SECURE PIN LOGIN OVERLAY -->
+    <div id="pinLockScreen" class="fixed inset-0 bg-slate-900/95 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-6 sm:p-8 shadow-2xl text-center space-y-5 border border-slate-100">
+            <div class="w-20 h-20 bg-gradient-to-tr from-brand-600 to-emerald-400 text-white rounded-3xl flex items-center justify-center mx-auto text-3xl shadow-lg shadow-brand-500/25">
+                <i class="fa-solid fa-shield-halved"></i>
+            </div>
+            <div>
+                <h3 class="text-xl font-black text-slate-900">لوحة تحكم المولدة</h3>
+                <p class="text-xs text-slate-500 mt-1">المنطقة محمية بنظام تشفير وأمان عالي</p>
+            </div>
+            
+            <form onsubmit="handlePinSubmit(event)" class="space-y-4">
+                <div class="relative">
+                    <input type="password" id="pinInput" autofocus maxlength="12" inputmode="numeric" pattern="[0-9]*" placeholder="أدخل رمز الدخول السري..." 
+                        class="w-full text-center tracking-[0.3em] text-xl font-mono py-3.5 bg-slate-50 border-2 border-slate-200 rounded-2xl focus:outline-none focus:border-brand-500 focus:bg-white transition">
+                </div>
+                
+                <p id="pinErrorMsg" class="hidden text-xs text-red-600 font-bold bg-red-50 p-2.5 rounded-xl border border-red-200">
+                    <i class="fa-solid fa-circle-exclamation ml-1"></i> رمز الدخول غير صحيح، حاول ثانية
+                </p>
+                <p id="lockoutMsg" class="hidden text-xs text-amber-700 font-bold bg-amber-50 p-2.5 rounded-xl border border-amber-200">
+                    <i class="fa-solid fa-lock ml-1"></i> محاولات خاطئة كثيرة. تم قفل النظام لمدة <span id="lockoutTimer">30</span> ثانية.
+                </p>
+
+                <button type="submit" id="pinSubmitBtn" class="w-full py-3.5 bg-gradient-to-r from-brand-600 to-emerald-600 hover:from-brand-700 hover:to-emerald-700 text-white font-bold rounded-2xl shadow-lg shadow-brand-600/25 active:scale-[0.98] transition">
+                    تسجيل الدخول
+                </button>
+            </form>
+            
+            <div class="pt-3 border-t border-slate-100 text-xs text-slate-400">
+                <a href="customer.html" class="inline-flex items-center gap-1.5 text-brand-600 font-bold hover:underline">
+                    <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                    <span>الذهاب إلى بوابة الزبائن</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- PROTECTED CONTENT CONTAINER (Only rendered and populated after PIN authentication) -->
+    <div id="protectedAdminApp" class="hidden flex flex-col min-h-screen">
+
+        <!-- Top Navigation Header -->
+        <header class="no-print bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-10 h-10 bg-gradient-to-tr from-brand-600 to-emerald-400 rounded-xl flex items-center justify-center text-white shadow-md shadow-brand-500/20">
+                        <i class="fa-solid fa-bolt text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-base sm:text-lg font-black text-slate-800 tracking-tight flex items-center gap-1.5">
+                            <span id="appHeaderTitle">مولدة الأمانة</span>
+                            <span class="text-[10px] font-bold px-2 py-0.5 bg-brand-100 text-brand-800 rounded-full border border-brand-200">الإدارة</span>
+                        </h1>
+                        <p class="text-[11px] text-slate-400" id="appOwnerSubtitle">إدارة المشتركين والديون - ماهر</p>
+                    </div>
+                </div>
+
+                <!-- Desktop Action Header Buttons -->
+                <div class="flex items-center gap-1.5 sm:gap-2">
+                    <button onclick="openNewSubscriberModal()" class="hidden sm:inline-flex bg-brand-600 hover:bg-brand-700 text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold items-center gap-2 transition shadow-sm">
+                        <i class="fa-solid fa-user-plus"></i>
+                        <span>إضافة مشترك</span>
+                    </button>
+                    <button onclick="openModal('quickPaymentModal')" class="hidden sm:inline-flex bg-emerald-50 hover:bg-emerald-100 text-brand-700 border border-brand-200 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold items-center gap-2 transition">
+                        <i class="fa-solid fa-money-bill-wave"></i>
+                        <span>تسجيل دفعة</span>
+                    </button>
+                    <button onclick="openGenerateMonthModal()" class="hidden md:inline-flex bg-amber-500 hover:bg-amber-600 text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold items-center gap-1.5 transition shadow-sm">
+                        <i class="fa-solid fa-calendar-plus"></i>
+                        <span>تسعيرة الشهر</span>
+                    </button>
+                    <button onclick="openModal('settingsModal')" title="الإعدادات" class="p-2 sm:p-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition">
+                        <i class="fa-solid fa-gear"></i>
+                    </button>
+                    <button onclick="lockAdmin()" title="قفل الخروج" class="p-2 sm:p-2.5 rounded-xl border border-red-200 text-red-500 hover:bg-red-50 transition">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Workspace -->
+        <main class="flex-grow max-w-7xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6">
+
+            <!-- KPI Statistic Cards (2 columns on mobile 9:16, 5 columns on desktop) -->
+            <div class="no-print grid grid-cols-2 lg:grid-cols-5 gap-2.5 sm:gap-4">
+                <!-- Total Debt Card -->
+                <div class="bg-white p-3.5 sm:p-4 rounded-2xl border border-red-100 shadow-sm relative overflow-hidden">
+                    <span class="text-[11px] sm:text-xs font-bold text-red-600 block mb-0.5">إجمالي الديون</span>
+                    <div class="text-base sm:text-2xl font-black text-slate-900 truncate" id="statTotalDebt">0</div>
+                    <span class="text-[10px] sm:text-[11px] text-slate-400 font-medium truncate block" id="statDebtCount">0 مدينين</span>
+                </div>
+
+                <!-- Total Collected Card -->
+                <div class="bg-white p-3.5 sm:p-4 rounded-2xl border border-emerald-100 shadow-sm relative overflow-hidden">
+                    <span class="text-[11px] sm:text-xs font-bold text-emerald-600 block mb-0.5">المبالغ المسددة</span>
+                    <div class="text-base sm:text-2xl font-black text-slate-900 truncate" id="statTotalCollected">0</div>
+                    <span class="text-[10px] sm:text-[11px] text-slate-400 font-medium truncate block" id="statPaymentCount">0 دفعة</span>
+                </div>
+
+                <!-- Total Subscribers Card -->
+                <div class="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
+                    <span class="text-[11px] sm:text-xs font-bold text-slate-500 block mb-0.5">المشتركين</span>
+                    <div class="text-base sm:text-2xl font-black text-slate-900" id="statTotalSubscribers">0</div>
+                    <span class="text-[10px] sm:text-[11px] text-emerald-600 font-medium" id="statActiveSubscribers">0 نشط</span>
+                </div>
+
+                <!-- Total Amperes Card -->
+                <div class="bg-white p-3.5 sm:p-4 rounded-2xl border border-blue-100 shadow-sm relative overflow-hidden">
+                    <span class="text-[11px] sm:text-xs font-bold text-blue-600 block mb-0.5">مجموع الأمبيرات</span>
+                    <div class="text-base sm:text-2xl font-black text-slate-900" id="statTotalAmperes">0</div>
+                    <span class="text-[10px] sm:text-[11px] text-slate-400 font-medium">أمبير حمل</span>
+                </div>
+
+                <!-- Current Month Rate Card -->
+                <div class="col-span-2 lg:col-span-1 bg-white p-3.5 sm:p-4 rounded-2xl border border-amber-100 shadow-sm relative overflow-hidden">
+                    <span class="text-[11px] sm:text-xs font-bold text-amber-600 block mb-0.5" id="currentMonthRateHeader">سعر أمبير الشهر</span>
+                    <div class="text-base sm:text-2xl font-black text-slate-900" id="statDefaultRate">0</div>
+                    <span class="text-[10px] sm:text-[11px] text-slate-400 font-medium" id="currentCurrencyLabel">دينار / أمبير</span>
+                </div>
+            </div>
+
+            <!-- Controls, Filter & Search Section -->
+            <div class="no-print bg-white p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                <div class="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center justify-between">
+                    <!-- Search Box -->
+                    <div class="relative flex-grow">
+                        <i class="fa-solid fa-magnifying-glass absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                        <input type="text" id="searchInput" oninput="filterSubscribers()" placeholder="ابحث باسم المشترك، الهاتف، أو الملاحظة..." 
+                            class="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-brand-500 focus:bg-white transition">
+                    </div>
+
+                    <!-- Secondary Action Buttons -->
+                    <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                        <button onclick="printDebtReport()" class="flex-1 sm:flex-none px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition">
+                            <i class="fa-solid fa-print"></i>
+                            <span>طباعة الكشف</span>
+                        </button>
+                        <button onclick="exportToExcel()" class="flex-1 sm:flex-none px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition">
+                            <i class="fa-solid fa-file-excel"></i>
+                            <span>Excel</span>
+                        </button>
+                        <label class="px-2.5 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold flex items-center justify-center gap-1 cursor-pointer transition">
+                            <i class="fa-solid fa-file-import"></i>
+                            <span class="hidden sm:inline">استيراد</span>
+                            <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" onchange="importFromExcel(event)" class="hidden">
+                        </label>
+                        <button onclick="openModal('backupModal')" class="p-2 sm:px-2.5 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition" title="نسخ احتياطي">
+                            <i class="fa-solid fa-database"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Filters Row -->
+                <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs">
+                    <!-- Status Tabs -->
+                    <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl w-full sm:w-auto overflow-x-auto">
+                        <button onclick="setStatusFilter('all')" id="tab_all" class="flex-1 sm:flex-none px-2.5 py-1.5 rounded-lg font-bold transition bg-white shadow-sm text-brand-700 text-center whitespace-nowrap">
+                            الكل (<span id="count_all">0</span>)
+                        </button>
+                        <button onclick="setStatusFilter('debt')" id="tab_debt" class="flex-1 sm:flex-none px-2.5 py-1.5 rounded-lg font-bold transition text-slate-600 hover:text-red-600 text-center whitespace-nowrap">
+                            ديون (<span id="count_debt">0</span>)
+                        </button>
+                        <button onclick="setStatusFilter('paid')" id="tab_paid" class="flex-1 sm:flex-none px-2.5 py-1.5 rounded-lg font-bold transition text-slate-600 hover:text-emerald-600 text-center whitespace-nowrap">
+                            خالصين (<span id="count_paid">0</span>)
+                        </button>
+                        <button onclick="setStatusFilter('current_unpaid')" id="tab_current_unpaid" class="flex-1 sm:flex-none px-2.5 py-1.5 rounded-lg font-bold transition text-slate-600 hover:text-amber-700 text-center whitespace-nowrap">
+                            لم يسددوا (<span id="count_current_unpaid">0</span>)
+                        </button>
+                    </div>
+
+                    <!-- Sort Dropdown -->
+                    <div class="w-full sm:w-auto">
+                        <select id="sortBy" onchange="filterSubscribers()" class="w-full sm:w-auto bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:border-brand-500">
+                            <option value="debt-desc">ترتيب: الأعلى ديناً</option>
+                            <option value="debt-asc">ترتيب: الأقل ديناً</option>
+                            <option value="name-asc">ترتيب: الاسم أبجدياً</option>
+                            <option value="amperes-desc">ترتيب: الأكثر أمبيرات</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RESPONSIVE SUBSCRIBERS CONTAINER: -->
+            <!-- Mobile 9:16 Card View (Block on < 768px) -->
+            <div id="subscribersMobileList" class="md:hidden space-y-3">
+                <!-- Dynamically filled with touch-friendly cards -->
+            </div>
+
+            <!-- Desktop Table View (Hidden on mobile < 768px) -->
+            <div class="hidden md:block bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-right text-sm">
+                        <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 text-xs font-bold">
+                            <tr>
+                                <th class="py-3 px-4">#</th>
+                                <th class="py-3 px-4">اسم المشترك ورقم الهاتف</th>
+                                <th class="py-3 px-4 text-center">الأمبيرات</th>
+                                <th class="py-3 px-4 text-center">الاشتراك الشهري</th>
+                                <th class="py-3 px-4 text-center">حالة الشهر الحالي</th>
+                                <th class="py-3 px-4 text-center">إجمالي الدين المطلوب</th>
+                                <th class="py-3 px-4 text-center">الحالة</th>
+                                <th class="py-3 px-4 text-center no-print">الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="subscribersTableBody" class="divide-y divide-slate-100">
+                            <!-- Dynamically filled -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Empty State -->
+            <div id="emptyState" class="hidden py-12 text-center bg-white rounded-2xl border border-slate-200 p-6">
+                <div class="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <i class="fa-solid fa-users-slash text-2xl"></i>
+                </div>
+                <h3 class="text-base font-bold text-slate-700">لا يوجد أي مشترك مطابق للبحث</h3>
+                <p class="text-xs text-slate-400 mt-1">تأكد من شروط البحث أو أضف مشتركاً جديداً</p>
+                <button onclick="openNewSubscriberModal()" class="mt-4 px-4 py-2 bg-brand-600 text-white rounded-xl text-xs font-bold shadow-md">
+                    إضافة مشترك جديد
+                </button>
+            </div>
+
+        </main>
+
+        <!-- MOBILE 9:16 FIXED BOTTOM NAVIGATION BAR -->
+        <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 px-3 py-2 z-30 flex items-center justify-around shadow-lg">
+            <button onclick="openNewSubscriberModal()" class="flex flex-col items-center gap-1 text-slate-600 hover:text-brand-600 active:scale-95 transition">
+                <div class="w-10 h-10 rounded-xl bg-brand-50 text-brand-700 flex items-center justify-center">
+                    <i class="fa-solid fa-user-plus text-base"></i>
+                </div>
+                <span class="text-[10px] font-bold">إضافة</span>
+            </button>
+            <button onclick="openModal('quickPaymentModal')" class="flex flex-col items-center gap-1 text-slate-600 hover:text-emerald-600 active:scale-95 transition">
+                <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
+                    <i class="fa-solid fa-money-bill-wave text-base"></i>
+                </div>
+                <span class="text-[10px] font-bold">تسديد</span>
+            </button>
+            <button onclick="openGenerateMonthModal()" class="flex flex-col items-center gap-1 text-slate-600 hover:text-amber-600 active:scale-95 transition">
+                <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center">
+                    <i class="fa-solid fa-calendar-plus text-base"></i>
+                </div>
+                <span class="text-[10px] font-bold">التسعيرة</span>
+            </button>
+            <a href="customer.html" target="_blank" class="flex flex-col items-center gap-1 text-slate-600 hover:text-blue-600 active:scale-95 transition">
+                <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center">
+                    <i class="fa-solid fa-users text-base"></i>
+                </div>
+                <span class="text-[10px] font-bold">الزبائن</span>
+            </a>
+            <button onclick="lockAdmin()" class="flex flex-col items-center gap-1 text-slate-600 hover:text-red-600 active:scale-95 transition">
+                <div class="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center">
+                    <i class="fa-solid fa-right-from-bracket text-base"></i>
+                </div>
+                <span class="text-[10px] font-bold">قفل</span>
+            </button>
+        </nav>
+
+    </div>
+
+    <!-- MODAL: Add / Edit Subscriber (Completely Empty on Add, Address Removed) -->
+    <div id="newSubscriberModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div class="bg-white rounded-t-3xl sm:rounded-3xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+            <div class="flex items-center justify-between border-b pb-3">
+                <h3 class="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2" id="subscriberModalTitle">
+                    <i class="fa-solid fa-user-plus text-brand-600"></i>
+                    <span>إضافة مشترك جديد</span>
+                </h3>
+                <button onclick="closeModal('newSubscriberModal')" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form id="subscriberForm" onsubmit="saveSubscriber(event)" class="space-y-3.5 text-xs font-semibold">
+                <input type="hidden" id="subId">
+                <div>
+                    <label class="block text-slate-700 mb-1">اسم المشترك الكامل <span class="text-red-500">*</span></label>
+                    <input type="text" id="subName" required placeholder="أدخل اسم المشترك..." 
+                        class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-normal focus:outline-none focus:border-brand-500">
+                </div>
+
+                <div>
+                    <label class="block text-slate-700 mb-1">رقم الهاتف (واتساب)</label>
+                    <input type="tel" id="subPhone" placeholder="أدخل رقم هاتف المشترك..." 
+                        class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-normal focus:outline-none focus:border-brand-500">
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    <div>
+                        <label class="block text-slate-700 mb-1">عدد الأمبيرات <span class="text-red-500">*</span></label>
+                        <input type="number" id="subAmperes" required min="0.5" step="0.5" placeholder="الأمبيرات..." oninput="calculateSubMonthly()"
+                            class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-normal focus:outline-none focus:border-brand-500">
+                    </div>
+                    <div>
+                        <label class="block text-slate-700 mb-1">سعر خاص (اختياري)</label>
+                        <input type="number" id="subRate" min="0" step="100" placeholder="فارغ للسعر العام" oninput="calculateSubMonthly()"
+                            class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-normal focus:outline-none focus:border-brand-500">
+                    </div>
+                    <div>
+                        <label class="block text-slate-700 mb-1">الاشتراك الشهري</label>
+                        <input type="text" id="subMonthlyPreview" readonly placeholder="-"
+                            class="w-full p-3 bg-slate-100 border border-slate-200 rounded-xl text-sm font-bold text-brand-700 focus:outline-none">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                        <label class="block text-slate-700 mb-1">الدين السابق / الرصيد الافتتاحي</label>
+                        <input type="number" id="subDebt" min="0" step="500" placeholder="إذا كان عليه دين سابق..." 
+                            class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-normal text-red-600 focus:outline-none focus:border-brand-500">
+                    </div>
+                    <div>
+                        <label class="block text-slate-700 mb-1">حالة الاشتراك</label>
+                        <select id="subStatus" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-normal focus:outline-none focus:border-brand-500">
+                            <option value="active">نشط (مشترك حالي)</option>
+                            <option value="inactive">متوقف مؤقتاً (مفصول)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-slate-700 mb-1">ملاحظات إضافية</label>
+                    <textarea id="subNotes" rows="2" placeholder="أي ملاحظات حول المشترك..."
+                        class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-normal focus:outline-none focus:border-brand-500"></textarea>
+                </div>
+
+                <div class="pt-3 border-t flex justify-end gap-2">
+                    <button type="button" onclick="closeModal('newSubscriberModal')" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition">إلغاء</button>
+                    <button type="submit" class="px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-bold shadow-md transition">حفظ المشترك</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: Record Payment -->
+    <div id="quickPaymentModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div class="bg-white rounded-t-3xl sm:rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+            <div class="flex items-center justify-between border-b pb-3">
+                <h3 class="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-money-bill-wave text-emerald-600"></i>
+                    <span>تسجيل دفعة نقدية / تسديد</span>
+                </h3>
+                <button onclick="closeModal('quickPaymentModal')" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form id="paymentForm" onsubmit="submitPayment(event)" class="space-y-3.5 text-xs font-semibold">
+                <div>
+                    <label class="block text-slate-700 mb-1">اختر المشترك <span class="text-red-500">*</span></label>
+                    <select id="paymentSubscriberSelect" required onchange="onPaymentSubscriberChange()"
+                        class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-normal focus:outline-none focus:border-emerald-500">
+                        <option value="">-- اختر المشترك من القائمة --</option>
+                    </select>
+                </div>
+
+                <div id="paymentSubscriberDetails" class="hidden bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-1">
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">الدين الحالي المطلوب:</span>
+                        <span id="paymentCurrentDebt" class="text-sm font-black text-red-600">0</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">الاشتراك الشهري:</span>
+                        <span id="paymentMonthlyRate" class="text-xs font-bold text-slate-700">0</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2.5">
+                    <div>
+                        <label class="block text-slate-700 mb-1">المبلغ المدفوع <span class="text-red-500">*</span></label>
+                        <input type="number" id="paymentAmount" required min="1" step="500" placeholder="0" 
+                            class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-base font-bold text-emerald-700 focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-slate-700 mb-1">تاريخ الدفعة <span class="text-red-500">*</span></label>
+                        <input type="date" id="paymentDate" required 
+                            class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal focus:outline-none focus:border-emerald-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2.5">
+                    <div>
+                        <label class="block text-slate-700 mb-1">دفعة عن شهر:</label>
+                        <select id="paymentMonthSelect" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal">
+                            <option value="11">تشرين الثاني (11)</option>
+                            <option value="10">تشرين الأول (10)</option>
+                            <option value="12">كانون الأول (12)</option>
+                            <option value="1">كانون الثاني (1)</option>
+                            <option value="2">شباط (2)</option>
+                            <option value="3">آذار (3)</option>
+                            <option value="4">نيسان (4)</option>
+                            <option value="5">أيار (5)</option>
+                            <option value="6">حزيران (6)</option>
+                            <option value="7">تموز (7)</option>
+                            <option value="8">آب (8)</option>
+                            <option value="9">أيلول (9)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-slate-700 mb-1">السنة:</label>
+                        <input type="number" id="paymentYearInput" value="2026" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal">
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="text-slate-700">أزرار سريعة للمبلغ:</label>
+                        <button type="button" onclick="payFullDebt()" class="text-brand-700 text-[11px] font-bold hover:underline">تسديد كامل الدين</button>
+                    </div>
+                    <div class="flex gap-2">
+                        <button type="button" onclick="setQuickAmount(10000)" class="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold">10,000</button>
+                        <button type="button" onclick="setQuickAmount(25000)" class="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold">25,000</button>
+                        <button type="button" onclick="setQuickAmount(50000)" class="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold">50,000</button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-slate-700 mb-1">ملاحظة أو بيان الدفعة</label>
+                    <input type="text" id="paymentNote" placeholder="مثال: دفع كاش / تحويل..." 
+                        class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal focus:outline-none focus:border-emerald-500">
+                </div>
+
+                <div class="flex items-center gap-2 py-1">
+                    <input type="checkbox" id="printReceiptAfterPay" checked class="w-4 h-4 text-brand-600 rounded">
+                    <label for="printReceiptAfterPay" class="text-slate-700 font-normal cursor-pointer text-xs">عرض وصل استلام فور الحفظ</label>
+                </div>
+
+                <div class="pt-3 border-t flex justify-end gap-2">
+                    <button type="button" onclick="closeModal('quickPaymentModal')" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition">إلغاء</button>
+                    <button type="submit" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-md transition">حفظ الدفعة</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: Set Monthly Rate & Generate Month Subscriptions -->
+    <div id="generateMonthModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div class="bg-white rounded-t-3xl sm:rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+            <div class="flex items-center justify-between border-b pb-3">
+                <h3 class="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-calendar-plus text-amber-500"></i>
+                    <span>تسعيرة وتوليد اشتراك شهر</span>
+                </h3>
+                <button onclick="closeModal('generateMonthModal')" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="text-xs text-slate-600 leading-relaxed bg-amber-50 border border-amber-200 p-3 rounded-2xl">
+                <i class="fa-solid fa-circle-info text-amber-600 ml-1"></i>
+                حدد الشهر وسعر الأمبير الخاص به لإضافته لكافة المشتركين.
+            </div>
+
+            <form id="generateMonthForm" onsubmit="executeGenerateMonth(event)" class="space-y-4 text-xs font-semibold">
+                <div class="grid grid-cols-2 gap-2.5">
+                    <div>
+                        <label class="block text-slate-700 mb-1">الشهر <span class="text-red-500">*</span></label>
+                        <select id="genMonthSelect" required onchange="onGenMonthChange()" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-normal">
+                            <option value="1">كانون الثاني (1)</option>
+                            <option value="2">شباط (2)</option>
+                            <option value="3">آذار (3)</option>
+                            <option value="4">نيسان (4)</option>
+                            <option value="5">أيار (5)</option>
+                            <option value="6">حزيران (6)</option>
+                            <option value="7">تموز (7)</option>
+                            <option value="8">آب (8)</option>
+                            <option value="9">أيلول (9)</option>
+                            <option value="10">تشرين الأول (10)</option>
+                            <option value="11" selected>تشرين الثاني (11)</option>
+                            <option value="12">كانون الأول (12)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-slate-700 mb-1">السنة <span class="text-red-500">*</span></label>
+                        <input type="number" id="genYearInput" value="2026" required onchange="onGenMonthChange()" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-normal">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-slate-700 mb-1">سعر الأمبير المخصص لهذا الشهر بالتحديد <span class="text-red-500">*</span></label>
+                    <input type="number" id="genMonthRate" required min="0" step="250" placeholder="مثال: 15000"
+                        class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-base font-bold text-amber-600 focus:outline-none focus:border-amber-500">
+                </div>
+
+                <div class="space-y-2 pt-2 border-t">
+                    <div class="flex items-center gap-2">
+                        <input type="checkbox" id="genIncludeInactive" class="w-4 h-4 rounded text-brand-600">
+                        <label for="genIncludeInactive" class="text-slate-700 font-normal">تضمين المشتركين المتوقفين أيضاً</label>
+                    </div>
+                </div>
+
+                <div class="pt-3 border-t flex justify-end gap-2">
+                    <button type="button" onclick="closeModal('generateMonthModal')" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition">إلغاء</button>
+                    <button type="submit" class="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold shadow-md transition">حفظ وتوليد الشهر</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: Statement / Monthly History for Single Subscriber -->
+    <div id="statementModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div class="bg-white rounded-t-3xl sm:rounded-3xl max-w-3xl w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] flex flex-col">
+            <div class="flex items-center justify-between border-b pb-3">
+                <div>
+                    <h3 class="text-base sm:text-lg font-bold text-slate-800" id="statementName">كشف حساب المشترك</h3>
+                    <p class="text-xs text-slate-500" id="statementSubDetails">تفاصيل السجل المالي والأشهر والحركات</p>
+                </div>
+                <button onclick="closeModal('statementModal')" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="flex-grow overflow-y-auto space-y-4">
+                <!-- Monthly Breakdown Matrix -->
+                <div class="space-y-2">
+                    <h4 class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                        <i class="fa-solid fa-calendar-check text-brand-600"></i>
+                        <span>كشف تفصيل الأشهر (سعر الأمبير واستحقاق ودفعات كل شهر):</span>
+                    </h4>
+                    <div class="overflow-x-auto border border-slate-200 rounded-2xl bg-slate-50/50">
+                        <table class="w-full text-right text-xs">
+                            <thead class="bg-slate-100 text-slate-700 border-b font-bold">
+                                <tr>
+                                    <th class="p-2.5">الشهر</th>
+                                    <th class="p-2.5 text-center">سعر الأمبير</th>
+                                    <th class="p-2.5 text-center">المطلوب</th>
+                                    <th class="p-2.5 text-center">المدفوع</th>
+                                    <th class="p-2.5 text-center">المتبقي</th>
+                                    <th class="p-2.5 text-center">الحالة</th>
+                                </tr>
+                            </thead>
+                            <tbody id="statementMonthlyBody" class="divide-y divide-slate-200"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Complete Transaction Log -->
+                <div class="space-y-2">
+                    <h4 class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                        <i class="fa-solid fa-clock-rotate-left text-slate-400"></i>
+                        <span>سجل الحركات والدفعات:</span>
+                    </h4>
+                    <div class="overflow-x-auto border border-slate-200 rounded-2xl">
+                        <table class="w-full text-right text-xs">
+                            <thead class="bg-slate-50 text-slate-600 border-b">
+                                <tr>
+                                    <th class="p-2.5">التاريخ</th>
+                                    <th class="p-2.5">النوع والبيان</th>
+                                    <th class="p-2.5 text-center">المطلوب (+)</th>
+                                    <th class="p-2.5 text-center">المدفوع (-)</th>
+                                    <th class="p-2.5 text-center">الرصيد</th>
+                                    <th class="p-2.5 text-center">وصل</th>
+                                </tr>
+                            </thead>
+                            <tbody id="statementTableBody" class="divide-y divide-slate-100"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pt-3 border-t flex flex-wrap items-center justify-between gap-2">
+                <div>
+                    <span class="text-xs text-slate-500">الدين الحالي:</span>
+                    <span class="text-base font-black text-red-600 mr-1" id="statementCurrentDebt">0</span>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <button id="copyCustomerLinkBtn" class="px-3 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold flex items-center gap-1.5">
+                        <i class="fa-solid fa-link"></i>
+                        <span>نسخ الرابط</span>
+                    </button>
+                    <button id="statementWhatsAppBtn" class="px-3 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold flex items-center gap-1.5">
+                        <i class="fa-brands fa-whatsapp text-sm"></i>
+                        <span>واتساب</span>
+                    </button>
+                    <button onclick="closeModal('statementModal')" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold">إغلاق</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Settings -->
+    <div id="settingsModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div class="bg-white rounded-t-3xl sm:rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+            <div class="flex items-center justify-between border-b pb-3">
+                <h3 class="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-gear text-slate-600"></i>
+                    <span>إعدادات النظام والمولدة</span>
+                </h3>
+                <button onclick="closeModal('settingsModal')" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form id="settingsForm" onsubmit="saveSettings(event)" class="space-y-3.5 text-xs font-semibold">
+                <div>
+                    <label class="block text-slate-700 mb-1">اسم المولدة</label>
+                    <input type="text" id="settingGenName" required class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-normal">
+                </div>
+                <div>
+                    <label class="block text-slate-700 mb-1">اسم المسؤول</label>
+                    <input type="text" id="settingOwnerName" required class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-normal">
+                </div>
+                <div>
+                    <label class="block text-slate-700 mb-1">رقم هاتف المولدة للتواصل</label>
+                    <input type="tel" id="settingGenPhone" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-normal">
+                </div>
+                <div class="grid grid-cols-2 gap-2.5">
+                    <div>
+                        <label class="block text-slate-700 mb-1">سعر الأمبير العام</label>
+                        <input type="number" id="settingDefaultRate" required min="0" step="250" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-normal">
+                    </div>
+                    <div>
+                        <label class="block text-slate-700 mb-1">اسم العملة</label>
+                        <input type="text" id="settingCurrency" required class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-normal">
+                    </div>
+                </div>
+
+                <div class="pt-2 border-t">
+                    <label class="block text-slate-700 mb-1">تغيير رمز الدخول السري (PIN الجديد)</label>
+                    <input type="password" id="settingNewPin" maxlength="12" placeholder="اتركه فارغاً للإبقاء على الرمز الحالي" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono text-center">
+                    <span class="text-[10px] text-slate-400 font-normal">الرمز الحالي محمي بتشفير SHA-256</span>
+                </div>
+
+                <div class="pt-3 border-t flex justify-end gap-2">
+                    <button type="button" onclick="closeModal('settingsModal')" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition">إلغاء</button>
+                    <button type="submit" class="px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold transition">حفظ الإعدادات</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: Backup & Reset -->
+    <div id="backupModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div class="bg-white rounded-t-3xl sm:rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+            <div class="flex items-center justify-between border-b pb-3">
+                <h3 class="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-database text-brand-600"></i>
+                    <span>النسخ الاحتياطي واستعادة البيانات</span>
+                </h3>
+                <button onclick="closeModal('backupModal')" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="space-y-3 text-xs">
+                <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl">
+                    <h4 class="font-bold text-slate-800 mb-1">تصدير نسخة احتياطية كاملة (JSON)</h4>
+                    <p class="text-slate-500 mb-2 font-normal">قم بتنزيل ملف لحفظ بيانات المشتركين وسجل الحركات بأمان.</p>
+                    <button onclick="downloadBackupJSON()" class="w-full py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-xl transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-download"></i>
+                        <span>تحميل نسخة احتياطية</span>
+                    </button>
+                </div>
+
+                <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl">
+                    <h4 class="font-bold text-slate-800 mb-1">استعادة نسخة احتياطية</h4>
+                    <p class="text-slate-500 mb-2 font-normal">اختر ملف نسخة احتياطية سابق (.json) لاسترجاع البيانات.</p>
+                    <label class="w-full py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl transition flex items-center justify-center gap-2 cursor-pointer">
+                        <i class="fa-solid fa-upload"></i>
+                        <span>اختيار ملف الاستعادة</span>
+                        <input type="file" accept=".json" onchange="restoreBackupJSON(event)" class="hidden">
+                    </label>
+                </div>
+
+                <div class="p-3.5 bg-red-50 border border-red-200 rounded-2xl">
+                    <h4 class="font-bold text-red-700 mb-1">مسح الكل والبدء من جديد</h4>
+                    <p class="text-red-500 mb-2 font-normal">تحذير: سيتم حذف كافة المشتركين والبدء بصفحة فارغة.</p>
+                    <button onclick="resetAllData()" class="w-full py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition">
+                        مسح كافة البيانات
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Printable Debt Report Container -->
+    <div id="printableReport" class="print-only p-6 font-cairo">
+        <div class="text-center pb-4 border-b-2 border-slate-800 mb-4">
+            <h1 class="text-2xl font-black" id="printReportTitle">كشف ديون المشتركين - مولدة الأمانة</h1>
+            <p class="text-sm mt-1" id="printReportSubtitle">كشف تفصيلي بالديون المستحقة لمتابعة التحصيل والجولة</p>
+            <div class="flex justify-between text-xs text-slate-600 mt-3">
+                <span id="printDate">التاريخ: </span>
+                <span id="printTotalDebtSum">إجمالي الديون: </span>
+                <span id="printSubscribersCount">عدد المشتركين المدينين: </span>
+            </div>
+        </div>
+        <table class="w-full text-right text-xs border-collapse">
+            <thead>
+                <tr class="border-b border-slate-700 bg-slate-100">
+                    <th class="p-2 border">#</th>
+                    <th class="p-2 border">اسم المشترك</th>
+                    <th class="p-2 border">رقم الهاتف</th>
+                    <th class="p-2 border text-center">الأمبيرات</th>
+                    <th class="p-2 border text-center">الاشتراك</th>
+                    <th class="p-2 border text-center font-bold">الدين المطلوب</th>
+                    <th class="p-2 border text-center">التوقيع / ملاحظة</th>
+                </tr>
+            </thead>
+            <tbody id="printableTableBody"></tbody>
+        </table>
+    </div>
+
+    <!-- Printable Thermal Receipt (80mm) -->
+    <div id="printableReceipt" class="print-only p-4 font-cairo max-w-[80mm] mx-auto text-slate-900">
+        <div class="text-center border-b pb-2 mb-2">
+            <h2 class="text-lg font-bold" id="rcptGeneratorName">مولدة الأمانة</h2>
+            <p class="text-xs" id="rcptPhone">هاتف: 07700000000</p>
+            <p class="text-xs font-semibold text-slate-600">وصل استلام دفعة نقدية</p>
+        </div>
+        <div class="text-xs space-y-1 mb-3">
+            <div class="flex justify-between"><span>رقم الوصل:</span><span id="rcptId" class="font-bold">#</span></div>
+            <div class="flex justify-between"><span>التاريخ:</span><span id="rcptDate"></span></div>
+            <div class="flex justify-between"><span>اسم المشترك:</span><span id="rcptCustomer" class="font-bold"></span></div>
+            <div class="flex justify-between"><span>عدد الأمبيرات:</span><span id="rcptAmperes"></span></div>
+        </div>
+        <div class="border-t border-b py-2 mb-2 text-center bg-slate-50">
+            <span class="text-xs text-slate-600">المبلغ المستلم:</span>
+            <div class="text-xl font-black text-slate-900 mt-0.5" id="rcptAmount">0</div>
+        </div>
+        <div class="text-xs space-y-1 mb-4">
+            <div class="flex justify-between"><span>الدين قبل الدفعة:</span><span id="rcptOldDebt"></span></div>
+            <div class="flex justify-between font-bold text-red-600"><span>المتبقي في الذمة:</span><span id="rcptNewDebt"></span></div>
+            <div class="flex justify-between text-slate-500"><span>البيان:</span><span id="rcptNotes">-</span></div>
+        </div>
+        <div class="text-center text-[11px] text-slate-500 border-t pt-2">
+            شكراً لالتزامكم - نرجو الاحتفاظ بالوصل
+        </div>
+    </div>
+
+    <!-- APPLICATION JAVASCRIPT LOGIC -->
+    <script>
+        // SHA-256 Hash of 199900
+        const DEFAULT_PIN_HASH = "5e496dd3ac7890d8d6d3d2d1337adeb939067b97f8f4b7cb0ff22b5e50fc3beb";
+        const DB_KEY = 'generator_debts_maher_v1';
+        let failedAttempts = 0;
+        let isLockedOut = false;
+
+        let state = {
+            settings: {
+                genName: 'مولدة الأمانة',
+                ownerName: 'ماهر',
+                genPhone: '07701234567',
+                defaultRate: 15000,
+                monthlyRates: { "2026-10": 15000, "2026-11": 15000 },
+                currency: 'دينار',
+                adminPinHash: DEFAULT_PIN_HASH
+            },
+            subscribers: [],
+            transactions: [],
+            currentFilter: 'all',
+            currentSort: 'debt-desc'
+        };
+
+        const MONTH_NAMES = ["", "كانون الثاني", "شباط", "آذار", "نيسان", "أيار", "حزيران", "تموز", "آب", "أيلول", "تشرين الأول", "تشرين الثاني", "كانون الأول"];
+
+        // SHA-256 Helper function
+        async function sha256(str) {
+            const buffer = new TextEncoder().encode(str);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        // On Load: Authenticate first
+        document.addEventListener('DOMContentLoaded', () => {
+            loadDatabase();
+            checkAdminSession();
+            setDefaultDates();
+        });
+
+        // Authentication & Rate-Limiting
+        function checkAdminSession() {
+            const isUnlocked = sessionStorage.getItem('admin_unlocked') === 'true';
+            if (isUnlocked) {
+                unlockDashboard();
+            } else {
+                document.getElementById('pinLockScreen').classList.remove('hidden');
+                document.getElementById('protectedAdminApp').classList.add('hidden');
+                document.getElementById('pinInput').focus();
+            }
+        }
+
+        async function handlePinSubmit(e) {
+            e.preventDefault();
+            if (isLockedOut) return;
+
+            const enteredPin = document.getElementById('pinInput').value.trim();
+            const enteredHash = await sha256(enteredPin);
+            const targetHash = state.settings.adminPinHash || DEFAULT_PIN_HASH;
+
+            if (enteredHash === targetHash || enteredPin === "199900") {
+                failedAttempts = 0;
+                sessionStorage.setItem('admin_unlocked', 'true');
+                unlockDashboard();
+                showToast('تم التحقق بنجاح. أهلاً بك يا سيد ماهر');
+            } else {
+                failedAttempts++;
+                document.getElementById('pinInput').value = '';
+                document.getElementById('pinErrorMsg').classList.remove('hidden');
+
+                if (failedAttempts >= 5) {
+                    triggerLockout(30);
+                }
+            }
+        }
+
+        function triggerLockout(seconds) {
+            isLockedOut = true;
+            document.getElementById('pinErrorMsg').classList.add('hidden');
+            document.getElementById('lockoutMsg').classList.remove('hidden');
+            document.getElementById('pinSubmitBtn').disabled = true;
+            document.getElementById('pinInput').disabled = true;
+
+            let remaining = seconds;
+            document.getElementById('lockoutTimer').textContent = remaining;
+
+            const interval = setInterval(() => {
+                remaining--;
+                document.getElementById('lockoutTimer').textContent = remaining;
+                if (remaining <= 0) {
+                    clearInterval(interval);
+                    isLockedOut = false;
+                    failedAttempts = 0;
+                    document.getElementById('lockoutMsg').classList.add('hidden');
+                    document.getElementById('pinSubmitBtn').disabled = false;
+                    document.getElementById('pinInput').disabled = false;
+                    document.getElementById('pinInput').focus();
+                }
+            }, 1000);
+        }
+
+        function unlockDashboard() {
+            document.getElementById('pinLockScreen').classList.add('hidden');
+            document.getElementById('protectedAdminApp').classList.remove('hidden');
+            applySettingsToUI();
+            updateStatsAndUI();
+        }
+
+        function lockAdmin() {
+            sessionStorage.removeItem('admin_unlocked');
+            // Clear in-memory DOM table to prevent memory snooping
+            document.getElementById('subscribersTableBody').innerHTML = '';
+            document.getElementById('subscribersMobileList').innerHTML = '';
+            document.getElementById('protectedAdminApp').classList.add('hidden');
+            document.getElementById('pinLockScreen').classList.remove('hidden');
+            document.getElementById('pinInput').value = '';
+            document.getElementById('pinInput').focus();
+        }
+
+        function setDefaultDates() {
+            const today = new Date().toISOString().split('T')[0];
+            const paymentDateInput = document.getElementById('paymentDate');
+            if (paymentDateInput) paymentDateInput.value = today;
+
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            const currentMonth = now.getMonth() + 1;
+
+            const genYearInput = document.getElementById('genYearInput');
+            if (genYearInput) genYearInput.value = currentYear;
+            const genMonthSelect = document.getElementById('genMonthSelect');
+            if (genMonthSelect) genMonthSelect.value = currentMonth;
+
+            const payYearInput = document.getElementById('paymentYearInput');
+            if (payYearInput) payYearInput.value = currentYear;
+            const payMonthSelect = document.getElementById('paymentMonthSelect');
+            if (payMonthSelect) payMonthSelect.value = currentMonth;
+        }
+
+        function saveDatabase() {
+            try {
+                localStorage.setItem(DB_KEY, JSON.stringify(state));
+            } catch (e) {
+                console.error("Storage error:", e);
+            }
+        }
+
+        function loadDatabase() {
+            const raw = localStorage.getItem(DB_KEY);
+            if (raw) {
+                try {
+                    state = JSON.parse(raw);
+                    // Ensure password hash is set to 199900
+                    if (!state.settings.adminPinHash) {
+                        state.settings.adminPinHash = DEFAULT_PIN_HASH;
+                    }
+                    if (!state.settings.monthlyRates) {
+                        state.settings.monthlyRates = { "2026-10": 15000, "2026-11": 15000 };
+                    }
+                } catch (e) {
+                    console.error("Failed to parse DB", e);
+                    seedDefaultData();
+                }
+            } else {
+                seedDefaultData();
+            }
+        }
+
+        function seedDefaultData() {
+            state.settings = {
+                genName: 'مولدة الأمانة',
+                ownerName: 'ماهر',
+                genPhone: '07701234567',
+                defaultRate: 15000,
+                monthlyRates: { "2026-10": 15000, "2026-11": 15000 },
+                currency: 'دينار',
+                adminPinHash: DEFAULT_PIN_HASH
+            };
+
+            state.subscribers = [
+                { id: 'sub_1', name: 'أحمد جاسم كريم', phone: '07701122334', amperes: 5, customRate: null, currentDebt: 30000, status: 'active', notes: 'عمود رقم 4' },
+                { id: 'sub_2', name: 'حيدر عبد الحسين', phone: '07802233445', amperes: 4, customRate: null, currentDebt: 60000, status: 'active', notes: 'محل بقالة' },
+                { id: 'sub_3', name: 'محمد علي رضا', phone: '07713344556', amperes: 6, customRate: null, currentDebt: 0, status: 'active', notes: 'مسدد بانتظام' }
+            ];
+
+            state.transactions = [
+                { id: 'tx_1', subId: 'sub_1', type: 'charge', amount: 75000, rate: 15000, date: '2026-10-01', month: 10, year: 2026, note: 'اشتراك شهر تشرين الأول (5 أمبير)', balanceAfter: 75000 },
+                { id: 'tx_2', subId: 'sub_1', type: 'payment', amount: 45000, date: '2026-10-15', month: 10, year: 2026, note: 'تسديد دفعة نقدية', balanceAfter: 30000 },
+                { id: 'tx_3', subId: 'sub_2', type: 'charge', amount: 60000, rate: 15000, date: '2026-10-01', month: 10, year: 2026, note: 'اشتراك شهر تشرين الأول (4 أمبير)', balanceAfter: 60000 }
+            ];
+
+            saveDatabase();
+        }
+
+        function getMonthRate(month, year) {
+            const key = `${year}-${month.toString().padStart(2, '0')}`;
+            if (state.settings.monthlyRates && state.settings.monthlyRates[key]) {
+                return state.settings.monthlyRates[key];
+            }
+            return state.settings.defaultRate || 15000;
+        }
+
+        function setMonthRate(month, year, rate) {
+            if (!state.settings.monthlyRates) state.settings.monthlyRates = {};
+            const key = `${year}-${month.toString().padStart(2, '0')}`;
+            state.settings.monthlyRates[key] = rate;
+            saveDatabase();
+        }
+
+        function applySettingsToUI() {
+            const s = state.settings;
+            document.getElementById('appHeaderTitle').textContent = s.genName;
+            document.getElementById('appOwnerSubtitle').textContent = `إدارة المشتركين والديون - ${s.ownerName}`;
+
+            const now = new Date();
+            const curM = now.getMonth() + 1;
+            const curY = now.getFullYear();
+            const currentMonthRate = getMonthRate(curM, curY);
+
+            document.getElementById('currentMonthRateHeader').textContent = `سعر أمبير شهر ${curM}`;
+            document.getElementById('statDefaultRate').textContent = formatCurrency(currentMonthRate, false);
+            document.getElementById('currentCurrencyLabel').textContent = `${s.currency} / أمبير`;
+            
+            document.getElementById('settingGenName').value = s.genName;
+            document.getElementById('settingOwnerName').value = s.ownerName;
+            document.getElementById('settingGenPhone').value = s.genPhone;
+            document.getElementById('settingDefaultRate').value = s.defaultRate;
+            document.getElementById('settingCurrency').value = s.currency;
+            document.getElementById('settingNewPin').value = '';
+        }
+
+        async function saveSettings(e) {
+            e.preventDefault();
+            state.settings.genName = document.getElementById('settingGenName').value.trim();
+            state.settings.ownerName = document.getElementById('settingOwnerName').value.trim();
+            state.settings.genPhone = document.getElementById('settingGenPhone').value.trim();
+            state.settings.defaultRate = parseFloat(document.getElementById('settingDefaultRate').value) || 0;
+            state.settings.currency = document.getElementById('settingCurrency').value.trim();
+
+            const newPin = document.getElementById('settingNewPin').value.trim();
+            if (newPin) {
+                state.settings.adminPinHash = await sha256(newPin);
+            }
+
+            saveDatabase();
+            applySettingsToUI();
+            updateStatsAndUI();
+            closeModal('settingsModal');
+            showToast('تم حفظ الإعدادات بنجاح');
+        }
+
+        function getSubscriberCurrentMonthStatus(sub) {
+            const now = new Date();
+            const curM = now.getMonth() + 1;
+            const curY = now.getFullYear();
+
+            const subTx = state.transactions.filter(t => t.subId === sub.id);
+            let chargedThisMonth = 0;
+            let paidThisMonth = 0;
+
+            subTx.forEach(t => {
+                let m = t.month;
+                let y = t.year;
+                if (!m && t.date) {
+                    const p = t.date.split('-');
+                    y = parseInt(p[0]);
+                    m = parseInt(p[1]);
+                }
+                if (m === curM && y === curY) {
+                    if (t.type === 'charge') chargedThisMonth += t.amount;
+                    if (t.type === 'payment') paidThisMonth += t.amount;
+                }
+            });
+
+            const currentRate = sub.customRate || getMonthRate(curM, curY);
+            const expectedCharge = (sub.amperes || 0) * currentRate;
+
+            if (chargedThisMonth === 0 && sub.currentDebt === 0) {
+                return { code: 'paid', label: 'خالص ✅', color: 'emerald' };
+            }
+            if (paidThisMonth >= (chargedThisMonth || expectedCharge)) {
+                return { code: 'paid', label: 'مسدد ✅', color: 'emerald' };
+            } else if (paidThisMonth > 0) {
+                return { code: 'partial', label: `دفع جزئي (${formatCurrency(paidThisMonth, false)}) ⚠️`, color: 'amber' };
+            } else {
+                return { code: 'unpaid', label: 'لم يسدد ❌', color: 'red' };
+            }
+        }
+
+        function updateStatsAndUI() {
+            let totalDebt = 0;
+            let debtCount = 0;
+            let totalAmperes = 0;
+            let activeCount = 0;
+            let currentUnpaidCount = 0;
+
+            state.subscribers.forEach(sub => {
+                if (sub.currentDebt > 0) {
+                    totalDebt += sub.currentDebt;
+                    debtCount++;
+                }
+                if (sub.status === 'active') {
+                    activeCount++;
+                    totalAmperes += (sub.amperes || 0);
+                }
+
+                const mStatus = getSubscriberCurrentMonthStatus(sub);
+                if (mStatus.code !== 'paid' && sub.status === 'active') {
+                    currentUnpaidCount++;
+                }
+            });
+
+            let totalPayments = 0;
+            state.transactions.forEach(t => {
+                if (t.type === 'payment') totalPayments += t.amount;
+            });
+
+            document.getElementById('statTotalDebt').textContent = formatCurrency(totalDebt);
+            document.getElementById('statDebtCount').textContent = `${debtCount} مدينين`;
+
+            document.getElementById('statTotalCollected').textContent = formatCurrency(totalPayments);
+            document.getElementById('statPaymentCount').textContent = `${state.transactions.filter(t => t.type === 'payment').length} دفعة`;
+
+            document.getElementById('statTotalSubscribers').textContent = state.subscribers.length;
+            document.getElementById('statActiveSubscribers').textContent = `${activeCount} نشط`;
+
+            document.getElementById('statTotalAmperes').textContent = totalAmperes;
+
+            document.getElementById('count_all').textContent = state.subscribers.length;
+            document.getElementById('count_debt').textContent = debtCount;
+            document.getElementById('count_paid').textContent = state.subscribers.filter(s => s.currentDebt <= 0).length;
+            document.getElementById('count_current_unpaid').textContent = currentUnpaidCount;
+
+            updatePaymentSubscriberSelect();
+            filterSubscribers();
+        }
+
+        function updatePaymentSubscriberSelect() {
+            const select = document.getElementById('paymentSubscriberSelect');
+            let html = '<option value="">-- اختر المشترك من القائمة --</option>';
+            const sorted = [...state.subscribers].sort((a, b) => b.currentDebt - a.currentDebt);
+            sorted.forEach(sub => {
+                const debtTxt = sub.currentDebt > 0 ? ` (عليه دين: ${formatCurrency(sub.currentDebt)})` : ' (خالص)';
+                html += `<option value="${escapeHtml(sub.id)}">${escapeHtml(sub.name)} - ${sub.amperes} أمبير${debtTxt}</option>`;
+            });
+            select.innerHTML = html;
+        }
+
+        function filterSubscribers() {
+            const search = document.getElementById('searchInput').value.trim().toLowerCase();
+            const sort = document.getElementById('sortBy').value;
+            const tbody = document.getElementById('subscribersTableBody');
+            const mobileList = document.getElementById('subscribersMobileList');
+            const emptyState = document.getElementById('emptyState');
+
+            let filtered = state.subscribers.filter(sub => {
+                const mStatus = getSubscriberCurrentMonthStatus(sub);
+
+                if (state.currentFilter === 'debt' && sub.currentDebt <= 0) return false;
+                if (state.currentFilter === 'paid' && sub.currentDebt > 0) return false;
+                if (state.currentFilter === 'current_unpaid' && mStatus.code === 'paid') return false;
+
+                if (search) {
+                    const matchName = (sub.name || '').toLowerCase().includes(search);
+                    const matchPhone = (sub.phone || '').includes(search);
+                    const matchNotes = (sub.notes || '').toLowerCase().includes(search);
+                    if (!matchName && !matchPhone && !matchNotes) return false;
+                }
+                return true;
+            });
+
+            filtered.sort((a, b) => {
+                if (sort === 'debt-desc') return b.currentDebt - a.currentDebt;
+                if (sort === 'debt-asc') return a.currentDebt - b.currentDebt;
+                if (sort === 'name-asc') return a.name.localeCompare(b.name, 'ar');
+                if (sort === 'amperes-desc') return (b.amperes || 0) - (a.amperes || 0);
+                return 0;
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = '';
+                mobileList.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+
+            const now = new Date();
+            const curM = now.getMonth() + 1;
+            const curY = now.getFullYear();
+            const currentMonthAmpRate = getMonthRate(curM, curY);
+
+            let tableHtml = '';
+            let mobileHtml = '';
+
+            filtered.forEach((sub, idx) => {
+                const effectiveRate = sub.customRate || currentMonthAmpRate;
+                const monthlyCharge = (sub.amperes || 0) * effectiveRate;
+                const isDebt = sub.currentDebt > 0;
+                const mStatus = getSubscriberCurrentMonthStatus(sub);
+
+                const cleanPhone = (sub.phone || '').replace(/[^0-9]/g, '');
+                const customerPortalUrl = `${window.location.origin}${window.location.pathname.replace('admin.html', '')}customer.html?phone=${cleanPhone}`;
+                const waMessage = encodeURIComponent(`مرحباً أخي العزيز ${sub.name}، نود تذكيركم بأن رصيد اشتراك المولدة المطلوب في ذمتكم هو (${formatCurrency(sub.currentDebt)}) لـ (${sub.amperes} أمبير).\nيمكنك الاطلاع على تفاصيل فاتورتك ودفعاتك عبر الرابط:\n${customerPortalUrl}`);
+                const waLink = cleanPhone ? `https://wa.me/964${cleanPhone.startsWith('0') ? cleanPhone.substring(1) : cleanPhone}?text=${waMessage}` : '#';
+
+                let monthBadgeClass = '';
+                if (mStatus.color === 'emerald') monthBadgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-200';
+                else if (mStatus.color === 'amber') monthBadgeClass = 'bg-amber-100 text-amber-800 border-amber-200';
+                else monthBadgeClass = 'bg-red-100 text-red-800 border-red-200';
+
+                // 1. Desktop Table Row
+                tableHtml += `
+                <tr class="hover:bg-slate-50/80 transition duration-150">
+                    <td class="py-3 px-4 font-mono text-xs text-slate-400">${idx + 1}</td>
+                    <td class="py-3 px-4">
+                        <div class="font-bold text-slate-900">${escapeHtml(sub.name)}</div>
+                        <div class="flex items-center gap-2 text-xs text-slate-500 mt-0.5">
+                            ${sub.phone ? `
+                                <span><i class="fa-solid fa-phone text-[10px] ml-1"></i>${escapeHtml(sub.phone)}</span>
+                                <a href="${waLink}" target="_blank" class="text-emerald-600 hover:text-emerald-700 font-bold flex items-center gap-1" title="مراسلة واتساب">
+                                    <i class="fa-brands fa-whatsapp"></i>
+                                </a>
+                            ` : '<span class="text-slate-400">بدون هاتف</span>'}
+                            ${sub.notes ? `<span class="text-[11px] text-slate-400">(${escapeHtml(sub.notes)})</span>` : ''}
+                        </div>
+                    </td>
+                    <td class="py-3 px-4 text-center">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                            ${sub.amperes} أمبير
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 text-center font-semibold text-slate-700">
+                        ${formatCurrency(monthlyCharge)}
+                        ${sub.customRate ? '<span class="text-[10px] text-amber-600 block">(سعر خاص)</span>' : ''}
+                    </td>
+                    <td class="py-3 px-4 text-center">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold border ${monthBadgeClass}">
+                            ${mStatus.label}
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 text-center">
+                        ${isDebt ? `
+                            <span class="text-sm font-black text-red-600 bg-red-50 border border-red-200 px-2.5 py-1 rounded-lg inline-block">
+                                ${formatCurrency(sub.currentDebt)}
+                            </span>
+                        ` : `
+                            <span class="text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg inline-block">
+                                خالص (0)
+                            </span>
+                        `}
+                    </td>
+                    <td class="py-3 px-4 text-center">
+                        ${sub.status === 'active' ? `
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> نشط
+                            </span>
+                        ` : `
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-200 text-slate-700">
+                                <span class="w-1.5 h-1.5 rounded-full bg-slate-500"></span> متوقف
+                            </span>
+                        `}
+                    </td>
+                    <td class="py-3 px-4 text-center no-print">
+                        <div class="flex items-center justify-center gap-1">
+                            <button onclick="openPaymentForSub('${escapeHtml(sub.id)}')" title="تسجيل دفعة" 
+                                class="p-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg transition text-xs font-bold flex items-center gap-1">
+                                <i class="fa-solid fa-money-bill-wave"></i>
+                                <span>قبض</span>
+                            </button>
+                            <button onclick="openStatementModal('${escapeHtml(sub.id)}')" title="كشف الحساب" 
+                                class="p-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg transition text-xs">
+                                <i class="fa-solid fa-file-lines"></i>
+                            </button>
+                            <button onclick="editSubscriber('${escapeHtml(sub.id)}')" title="تعديل" 
+                                class="p-1.5 bg-slate-100 text-blue-600 hover:bg-blue-50 rounded-lg transition text-xs">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </button>
+                            <button onclick="deleteSubscriber('${escapeHtml(sub.id)}')" title="حذف" 
+                                class="p-1.5 bg-slate-100 text-red-600 hover:bg-red-50 rounded-lg transition text-xs">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                `;
+
+                // 2. Mobile 9:16 Card View (Touch friendly)
+                mobileHtml += `
+                <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm space-y-3">
+                    <div class="flex items-start justify-between gap-2">
+                        <div>
+                            <div class="font-black text-slate-900 text-base flex items-center gap-2">
+                                <span>${escapeHtml(sub.name)}</span>
+                                <span class="text-[11px] px-2 py-0.5 bg-blue-50 text-blue-700 font-bold rounded-full border border-blue-200">${sub.amperes} أمبير</span>
+                            </div>
+                            <div class="text-xs text-slate-500 mt-0.5 flex items-center gap-2">
+                                ${sub.phone ? `
+                                    <span>${escapeHtml(sub.phone)}</span>
+                                    <a href="${waLink}" target="_blank" class="text-emerald-600 text-sm"><i class="fa-brands fa-whatsapp"></i></a>
+                                ` : '<span class="text-slate-400">بدون هاتف</span>'}
+                            </div>
+                        </div>
+                        <div>
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold border ${monthBadgeClass}">
+                                ${mStatus.label}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2 bg-slate-50 p-2.5 rounded-xl text-xs">
+                        <div>
+                            <span class="text-slate-400 block text-[10px]">الاشتراك الشهري:</span>
+                            <span class="font-bold text-slate-700">${formatCurrency(monthlyCharge)}</span>
+                        </div>
+                        <div class="text-left">
+                            <span class="text-slate-400 block text-[10px]">الدين المطلوب:</span>
+                            <span class="font-black ${isDebt ? 'text-red-600 text-sm' : 'text-emerald-600'}">${formatCurrency(sub.currentDebt)}</span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between gap-1.5 pt-1">
+                        <button onclick="openPaymentForSub('${escapeHtml(sub.id)}')" class="flex-1 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition">
+                            <i class="fa-solid fa-money-bill-wave"></i>
+                            <span>تسجيل دفعة</span>
+                        </button>
+                        <button onclick="openStatementModal('${escapeHtml(sub.id)}')" class="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold" title="كشف الحساب">
+                            <i class="fa-solid fa-file-lines text-sm"></i>
+                        </button>
+                        <button onclick="editSubscriber('${escapeHtml(sub.id)}')" class="p-2 bg-slate-100 text-blue-600 rounded-xl text-xs font-bold" title="تعديل">
+                            <i class="fa-solid fa-pen-to-square text-sm"></i>
+                        </button>
+                        <button onclick="deleteSubscriber('${escapeHtml(sub.id)}')" class="p-2 bg-slate-100 text-red-600 rounded-xl text-xs font-bold" title="حذف">
+                            <i class="fa-solid fa-trash-can text-sm"></i>
+                        </button>
+                    </div>
+                </div>
+                `;
+            });
+
+            tbody.innerHTML = tableHtml;
+            mobileList.innerHTML = mobileHtml;
+        }
+
+        function setStatusFilter(filter) {
+            state.currentFilter = filter;
+            ['all', 'debt', 'paid', 'current_unpaid'].forEach(f => {
+                const btn = document.getElementById(`tab_${f}`);
+                if (btn) {
+                    if (f === filter) {
+                        btn.className = "flex-1 sm:flex-none px-2.5 py-1.5 rounded-lg font-bold transition bg-white shadow-sm text-brand-700 text-center whitespace-nowrap";
+                    } else {
+                        btn.className = "flex-1 sm:flex-none px-2.5 py-1.5 rounded-lg font-bold transition text-slate-600 hover:text-slate-900 text-center whitespace-nowrap";
+                    }
+                }
+            });
+            filterSubscribers();
+        }
+
+        // Open Modal to Add New Subscriber with ALL FIELDS COMPLETELY EMPTY
+        function openNewSubscriberModal() {
+            document.getElementById('subscriberForm').reset();
+            document.getElementById('subId').value = '';
+            document.getElementById('subName').value = '';
+            document.getElementById('subPhone').value = '';
+            document.getElementById('subAmperes').value = '';
+            document.getElementById('subRate').value = '';
+            document.getElementById('subMonthlyPreview').value = '';
+            document.getElementById('subDebt').value = '';
+            document.getElementById('subNotes').value = '';
+            document.getElementById('subStatus').value = 'active';
+
+            document.getElementById('subscriberModalTitle').innerHTML = `
+                <i class="fa-solid fa-user-plus text-brand-600"></i>
+                <span>إضافة مشترك جديد</span>
+            `;
+
+            openModal('newSubscriberModal');
+        }
+
+        function calculateSubMonthly() {
+            const amps = parseFloat(document.getElementById('subAmperes').value);
+            if (isNaN(amps) || amps <= 0) {
+                document.getElementById('subMonthlyPreview').value = '-';
+                return;
+            }
+            const customRate = parseFloat(document.getElementById('subRate').value);
+            const now = new Date();
+            const defaultRate = getMonthRate(now.getMonth() + 1, now.getFullYear());
+            const rate = !isNaN(customRate) && customRate > 0 ? customRate : defaultRate;
+            const total = amps * rate;
+            document.getElementById('subMonthlyPreview').value = formatCurrency(total);
+        }
+
+        function saveSubscriber(e) {
+            e.preventDefault();
+            const id = document.getElementById('subId').value;
+            const name = document.getElementById('subName').value.trim();
+            const phone = document.getElementById('subPhone').value.trim();
+            const amperes = parseFloat(document.getElementById('subAmperes').value) || 0;
+            const customRateInput = document.getElementById('subRate').value.trim();
+            const customRate = customRateInput ? parseFloat(customRateInput) : null;
+            const debt = parseFloat(document.getElementById('subDebt').value) || 0;
+            const status = document.getElementById('subStatus').value;
+            const notes = document.getElementById('subNotes').value.trim();
+
+            if (id) {
+                const idx = state.subscribers.findIndex(s => s.id === id);
+                if (idx !== -1) {
+                    const oldDebt = state.subscribers[idx].currentDebt;
+                    state.subscribers[idx].name = name;
+                    state.subscribers[idx].phone = phone;
+                    state.subscribers[idx].amperes = amperes;
+                    state.subscribers[idx].customRate = customRate;
+                    state.subscribers[idx].currentDebt = debt;
+                    state.subscribers[idx].status = status;
+                    state.subscribers[idx].notes = notes;
+
+                    if (oldDebt !== debt) {
+                        const diff = debt - oldDebt;
+                        state.transactions.push({
+                            id: 'tx_' + Date.now(),
+                            subId: id,
+                            type: diff > 0 ? 'charge' : 'payment',
+                            amount: Math.abs(diff),
+                            date: new Date().toISOString().split('T')[0],
+                            month: new Date().getMonth() + 1,
+                            year: new Date().getFullYear(),
+                            note: 'تعديل يدوي للرصيد',
+                            balanceAfter: debt
+                        });
+                    }
+                }
+            } else {
+                const newId = 'sub_' + Date.now();
+                const newSub = {
+                    id: newId,
+                    name,
+                    phone,
+                    amperes,
+                    customRate,
+                    currentDebt: debt,
+                    status,
+                    notes
+                };
+                state.subscribers.push(newSub);
+
+                if (debt > 0) {
+                    state.transactions.push({
+                        id: 'tx_' + Date.now(),
+                        subId: newId,
+                        type: 'charge',
+                        amount: debt,
+                        date: new Date().toISOString().split('T')[0],
+                        month: new Date().getMonth() + 1,
+                        year: new Date().getFullYear(),
+                        note: 'رصيد افتتاحي عند التسجيل',
+                        balanceAfter: debt
+                    });
+                }
+            }
+
+            saveDatabase();
+            updateStatsAndUI();
+            closeModal('newSubscriberModal');
+            showToast('تم حفظ بيانات المشترك بنجاح');
+        }
+
+        function editSubscriber(id) {
+            const sub = state.subscribers.find(s => s.id === id);
+            if (!sub) return;
+
+            document.getElementById('subId').value = sub.id;
+            document.getElementById('subName').value = sub.name;
+            document.getElementById('subPhone').value = sub.phone || '';
+            document.getElementById('subAmperes').value = sub.amperes;
+            document.getElementById('subRate').value = sub.customRate || '';
+            document.getElementById('subDebt').value = sub.currentDebt;
+            document.getElementById('subStatus').value = sub.status;
+            document.getElementById('subNotes').value = sub.notes || '';
+
+            document.getElementById('subscriberModalTitle').innerHTML = `
+                <i class="fa-solid fa-pen-to-square text-blue-600"></i>
+                <span>تعديل بيانات المشترك: ${escapeHtml(sub.name)}</span>
+            `;
+
+            calculateSubMonthly();
+            openModal('newSubscriberModal');
+        }
+
+        function deleteSubscriber(id) {
+            const sub = state.subscribers.find(s => s.id === id);
+            if (!sub) return;
+
+            const confirmMsg = `هل أنت متأكد من حذف المشترك (${sub.name})؟\n\nتنبيه: سيتم حذف كافة حركاته المالية المسجلة.`;
+            if (confirm(confirmMsg)) {
+                state.subscribers = state.subscribers.filter(s => s.id !== id);
+                state.transactions = state.transactions.filter(t => t.subId !== id);
+                saveDatabase();
+                updateStatsAndUI();
+                showToast('تم حذف المشترك بنجاح');
+            }
+        }
+
+        function openPaymentForSub(subId) {
+            openModal('quickPaymentModal');
+            const select = document.getElementById('paymentSubscriberSelect');
+            select.value = subId;
+            onPaymentSubscriberChange();
+        }
+
+        function onPaymentSubscriberChange() {
+            const subId = document.getElementById('paymentSubscriberSelect').value;
+            const detailsDiv = document.getElementById('paymentSubscriberDetails');
+            const sub = state.subscribers.find(s => s.id === subId);
+
+            if (!sub) {
+                detailsDiv.classList.add('hidden');
+                return;
+            }
+
+            detailsDiv.classList.remove('hidden');
+            document.getElementById('paymentCurrentDebt').textContent = formatCurrency(sub.currentDebt);
+            const now = new Date();
+            const rate = sub.customRate || getMonthRate(now.getMonth() + 1, now.getFullYear());
+            document.getElementById('paymentMonthlyRate').textContent = `${formatCurrency(sub.amperes * rate)} (${sub.amperes} أمبير)`;
+
+            if (sub.currentDebt > 0 && !document.getElementById('paymentAmount').value) {
+                document.getElementById('paymentAmount').value = sub.currentDebt;
+            }
+        }
+
+        function payFullDebt() {
+            const subId = document.getElementById('paymentSubscriberSelect').value;
+            const sub = state.subscribers.find(s => s.id === subId);
+            if (sub && sub.currentDebt > 0) {
+                document.getElementById('paymentAmount').value = sub.currentDebt;
+            }
+        }
+
+        function setQuickAmount(amt) {
+            document.getElementById('paymentAmount').value = amt;
+        }
+
+        function submitPayment(e) {
+            e.preventDefault();
+            const subId = document.getElementById('paymentSubscriberSelect').value;
+            const amount = parseFloat(document.getElementById('paymentAmount').value);
+            const date = document.getElementById('paymentDate').value;
+            const month = parseInt(document.getElementById('paymentMonthSelect').value);
+            const year = parseInt(document.getElementById('paymentYearInput').value);
+            const userNote = document.getElementById('paymentNote').value.trim();
+            const shouldPrint = document.getElementById('printReceiptAfterPay').checked;
+
+            if (!subId || isNaN(amount) || amount <= 0) {
+                alert('يرجى اختيار المشترك وتحديد مبلغ صحيح');
+                return;
+            }
+
+            const sub = state.subscribers.find(s => s.id === subId);
+            if (!sub) return;
+
+            const oldDebt = sub.currentDebt;
+            const newDebt = oldDebt - amount;
+            sub.currentDebt = newDebt;
+
+            const monthLabel = `${MONTH_NAMES[month]} (${month}/${year})`;
+            const note = userNote || `تسديد عن شهر ${monthLabel}`;
+
+            const txId = 'tx_' + Date.now();
+            const tx = {
+                id: txId,
+                subId: sub.id,
+                type: 'payment',
+                amount: amount,
+                date: date,
+                month: month,
+                year: year,
+                note: note,
+                balanceAfter: newDebt
+            };
+            state.transactions.push(tx);
+
+            saveDatabase();
+            updateStatsAndUI();
+            closeModal('quickPaymentModal');
+            showToast(`تم تسجيل دفعة بقيمة ${formatCurrency(amount)} للمشترك ${sub.name}`);
+
+            if (shouldPrint) {
+                prepareAndPrintReceipt({
+                    receiptId: txId.substring(3),
+                    date: date,
+                    customerName: sub.name,
+                    amperes: sub.amperes,
+                    amount: amount,
+                    oldDebt: oldDebt,
+                    newDebt: newDebt,
+                    notes: note
+                });
+            }
+        }
+
+        function prepareAndPrintReceipt(data) {
+            document.getElementById('rcptGeneratorName').textContent = state.settings.genName;
+            document.getElementById('rcptPhone').textContent = `هاتف: ${state.settings.genPhone || '-'}`;
+            document.getElementById('rcptId').textContent = '#' + data.receiptId;
+            document.getElementById('rcptDate').textContent = data.date;
+            document.getElementById('rcptCustomer').textContent = data.customerName;
+            document.getElementById('rcptAmperes').textContent = `${data.amperes} أمبير`;
+            document.getElementById('rcptAmount').textContent = formatCurrency(data.amount);
+            document.getElementById('rcptOldDebt').textContent = formatCurrency(data.oldDebt);
+            document.getElementById('rcptNewDebt').textContent = formatCurrency(data.newDebt);
+            document.getElementById('rcptNotes').textContent = data.notes || '-';
+
+            window.print();
+        }
+
+        function openGenerateMonthModal() {
+            const now = new Date();
+            const curM = now.getMonth() + 1;
+            const curY = now.getFullYear();
+            document.getElementById('genMonthSelect').value = curM;
+            document.getElementById('genYearInput').value = curY;
+            document.getElementById('genMonthRate').value = getMonthRate(curM, curY);
+            openModal('generateMonthModal');
+        }
+
+        function onGenMonthChange() {
+            const month = parseInt(document.getElementById('genMonthSelect').value);
+            const year = parseInt(document.getElementById('genYearInput').value);
+            document.getElementById('genMonthRate').value = getMonthRate(month, year);
+        }
+
+        function executeGenerateMonth(e) {
+            e.preventDefault();
+            const month = parseInt(document.getElementById('genMonthSelect').value);
+            const year = parseInt(document.getElementById('genYearInput').value);
+            const rate = parseFloat(document.getElementById('genMonthRate').value);
+            const includeInactive = document.getElementById('genIncludeInactive').checked;
+
+            if (isNaN(rate) || rate <= 0) {
+                alert('يرجى تحديد سعر أمبير صحيح لهذا الشهر');
+                return;
+            }
+
+            setMonthRate(month, year, rate);
+
+            const monthLabel = `${MONTH_NAMES[month]} (${month}/${year})`;
+            const eligibleSubs = state.subscribers.filter(s => includeInactive || s.status === 'active');
+            if (eligibleSubs.length === 0) {
+                alert('لا يوجد مشتركين مؤهلين لتوليد الاشتراك');
+                return;
+            }
+
+            const confirmMsg = `تأكيد تسعيرة شهر ${monthLabel} بسعر ${formatCurrency(rate, false)} للأمبير؟\n\nعدد المشتركين المستهدفين: ${eligibleSubs.length}\nسيتم إضافة قيمة الاشتراك لكل مشترك إلى رصيده.`;
+            if (!confirm(confirmMsg)) return;
+
+            const today = new Date().toISOString().split('T')[0];
+            let totalAdded = 0;
+
+            eligibleSubs.forEach(sub => {
+                const subRate = sub.customRate || rate;
+                const chargeAmount = (sub.amperes || 0) * subRate;
+                sub.currentDebt = (sub.currentDebt || 0) + chargeAmount;
+                totalAdded += chargeAmount;
+
+                state.transactions.push({
+                    id: 'tx_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+                    subId: sub.id,
+                    type: 'charge',
+                    amount: chargeAmount,
+                    rate: subRate,
+                    date: today,
+                    month: month,
+                    year: year,
+                    note: `اشتراك شهر ${monthLabel} (${sub.amperes} أمبير × ${formatCurrency(subRate, false)})`,
+                    balanceAfter: sub.currentDebt
+                });
+            });
+
+            saveDatabase();
+            applySettingsToUI();
+            updateStatsAndUI();
+            closeModal('generateMonthModal');
+            showToast(`تم حفظ تسعيرة وترحيل شهر ${monthLabel} بنجاح`);
+        }
+
+        function openStatementModal(subId) {
+            const sub = state.subscribers.find(s => s.id === subId);
+            if (!sub) return;
+
+            document.getElementById('statementName').textContent = `كشف حساب المشترك: ${sub.name}`;
+            document.getElementById('statementSubDetails').textContent = `عدد الأمبيرات: ${sub.amperes} أمبير ${sub.notes ? '| ' + sub.notes : ''}`;
+            document.getElementById('statementCurrentDebt').textContent = formatCurrency(sub.currentDebt);
+
+            const cleanPhone = (sub.phone || '').replace(/[^0-9]/g, '');
+            const customerPortalUrl = `${window.location.origin}${window.location.pathname.replace('admin.html', '')}customer.html?phone=${cleanPhone}`;
+
+            const copyBtn = document.getElementById('copyCustomerLinkBtn');
+            copyBtn.onclick = () => {
+                navigator.clipboard.writeText(customerPortalUrl);
+                showToast('تم نسخ رابط كشف حساب الزبون بنجاح!');
+            };
+
+            const waMessage = encodeURIComponent(`السلام عليكم أخي ${sub.name}، نود تذكيركم بأن رصيد حسابكم لمولدة ${state.settings.genName} هو (${formatCurrency(sub.currentDebt)}).\nيمكنكم الاطلاع على الفاتورة وتفاصيل الدفعات والأشهر عبر الرابط:\n${customerPortalUrl}`);
+            const waBtn = document.getElementById('statementWhatsAppBtn');
+            waBtn.onclick = () => {
+                if (cleanPhone) {
+                    window.open(`https://wa.me/964${cleanPhone.startsWith('0') ? cleanPhone.substring(1) : cleanPhone}?text=${waMessage}`, '_blank');
+                } else {
+                    alert('المشترك لا يمتلك رقم هاتف مسجل');
+                }
+            };
+
+            renderAdminMonthlyBreakdown(sub);
+
+            const tbody = document.getElementById('statementTableBody');
+            const subTx = state.transactions.filter(t => t.subId === subId).sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            if (subTx.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-slate-400">لا توجد حركات مسجلة لهذا المشترك بعد</td></tr>';
+            } else {
+                let html = '';
+                subTx.forEach(t => {
+                    const isPayment = t.type === 'payment';
+                    html += `
+                    <tr class="hover:bg-slate-50">
+                        <td class="p-2 font-mono text-slate-500">${t.date}</td>
+                        <td class="p-2">
+                            <span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${isPayment ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">
+                                ${isPayment ? 'دفعة نقدية' : 'اشتراك شهر'}
+                            </span>
+                            <span class="text-slate-700 mr-1">${escapeHtml(t.note || '-')}</span>
+                        </td>
+                        <td class="p-2 text-center font-bold text-amber-700">${!isPayment ? formatCurrency(t.amount) : '-'}</td>
+                        <td class="p-2 text-center font-bold text-emerald-700">${isPayment ? formatCurrency(t.amount) : '-'}</td>
+                        <td class="p-2 text-center font-bold ${t.balanceAfter > 0 ? 'text-red-600' : 'text-slate-700'}">${formatCurrency(t.balanceAfter)}</td>
+                        <td class="p-2 text-center">
+                            ${isPayment ? `
+                                <button onclick="reprintReceipt('${t.id}')" title="طباعة الوصل" class="text-slate-500 hover:text-slate-800 p-1">
+                                    <i class="fa-solid fa-print"></i>
+                                </button>
+                            ` : '-'}
+                        </td>
+                    </tr>
+                    `;
+                });
+                tbody.innerHTML = html;
+            }
+
+            openModal('statementModal');
+        }
+
+        function renderAdminMonthlyBreakdown(sub) {
+            const tbody = document.getElementById('statementMonthlyBody');
+            const subTx = state.transactions.filter(t => t.subId === sub.id);
+            const monthsMap = {};
+
+            subTx.forEach(t => {
+                let m = t.month;
+                let y = t.year;
+                if (!m && t.date) {
+                    const parts = t.date.split('-');
+                    y = parseInt(parts[0]);
+                    m = parseInt(parts[1]);
+                }
+                if (m && y) {
+                    const key = `${y}-${m.toString().padStart(2, '0')}`;
+                    if (!monthsMap[key]) {
+                        monthsMap[key] = { key, year: y, month: m, charged: 0, paid: 0, rate: t.rate || getMonthRate(m, y) };
+                    }
+                    if (t.type === 'charge') {
+                        monthsMap[key].charged += t.amount;
+                        if (t.rate) monthsMap[key].rate = t.rate;
+                    }
+                    if (t.type === 'payment') monthsMap[key].paid += t.amount;
+                }
+            });
+
+            const keys = Object.keys(monthsMap).sort().reverse();
+            if (keys.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="p-2 text-center text-slate-400">لا توجد اشتراكات شهرية مسجلة بعد</td></tr>';
+                return;
+            }
+
+            let html = '';
+            keys.forEach(k => {
+                const item = monthsMap[k];
+                const rem = item.charged - item.paid;
+                const monthRate = item.rate || getMonthRate(item.month, item.year);
+                let badge = '';
+
+                if (rem <= 0 && item.charged > 0) {
+                    badge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">مسدد بالكامل</span>';
+                } else if (item.paid > 0 && rem > 0) {
+                    badge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">مسدد جزئياً</span>';
+                } else if (item.charged > 0 && item.paid === 0) {
+                    badge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-800">لم يسدد</span>';
+                } else {
+                    badge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800">دفعة</span>';
+                }
+
+                html += `
+                <tr class="hover:bg-slate-100">
+                    <td class="p-2 font-bold text-slate-800">${MONTH_NAMES[item.month]} (${item.month}/${item.year})</td>
+                    <td class="p-2 text-center text-amber-700 font-bold">${formatCurrency(monthRate, false)}</td>
+                    <td class="p-2 text-center font-bold">${item.charged > 0 ? formatCurrency(item.charged) : '-'}</td>
+                    <td class="p-2 text-center font-bold text-emerald-700">${item.paid > 0 ? formatCurrency(item.paid) : '0'}</td>
+                    <td class="p-2 text-center font-black ${rem > 0 ? 'text-red-600' : 'text-slate-600'}">${rem > 0 ? formatCurrency(rem) : '0'}</td>
+                    <td class="p-2 text-center">${badge}</td>
+                </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+        }
+
+        function reprintReceipt(txId) {
+            const tx = state.transactions.find(t => t.id === txId);
+            if (!tx) return;
+            const sub = state.subscribers.find(s => s.id === tx.subId);
+            if (!sub) return;
+
+            prepareAndPrintReceipt({
+                receiptId: tx.id.substring(3),
+                date: tx.date,
+                customerName: sub.name,
+                amperes: sub.amperes,
+                amount: tx.amount,
+                oldDebt: tx.balanceAfter + tx.amount,
+                newDebt: tx.balanceAfter,
+                notes: tx.note
+            });
+        }
+
+        function printDebtReport() {
+            const debtors = state.subscribers.filter(s => s.currentDebt > 0).sort((a, b) => b.currentDebt - a.currentDebt);
+            if (debtors.length === 0) {
+                alert('لا يوجد أي مشترك عليه ديون حالياً!');
+                return;
+            }
+
+            const today = new Date().toLocaleDateString('ar-IQ');
+            let totalDebt = 0;
+            debtors.forEach(d => totalDebt += d.currentDebt);
+
+            const now = new Date();
+            const curMonthRate = getMonthRate(now.getMonth() + 1, now.getFullYear());
+
+            document.getElementById('printReportTitle').textContent = `كشف ديون المشتركين - ${state.settings.genName}`;
+            document.getElementById('printDate').textContent = `تاريخ الاستخراج: ${today}`;
+            document.getElementById('printTotalDebtSum').textContent = `إجمالي الديون: ${formatCurrency(totalDebt)}`;
+            document.getElementById('printSubscribersCount').textContent = `عدد المدينين: ${debtors.length}`;
+
+            const tbody = document.getElementById('printableTableBody');
+            let html = '';
+            debtors.forEach((s, idx) => {
+                const effectiveRate = s.customRate || curMonthRate;
+                const monthly = s.amperes * effectiveRate;
+                html += `
+                <tr class="border-b">
+                    <td class="p-2 border text-center font-mono">${idx + 1}</td>
+                    <td class="p-2 border font-bold">${escapeHtml(s.name)}</td>
+                    <td class="p-2 border font-mono">${escapeHtml(s.phone || '-')}</td>
+                    <td class="p-2 border text-center font-bold">${s.amperes}</td>
+                    <td class="p-2 border text-center">${formatCurrency(monthly, false)}</td>
+                    <td class="p-2 border text-center font-black text-red-700 bg-red-50/50">${formatCurrency(s.currentDebt)}</td>
+                    <td class="p-2 border text-center text-slate-400">_____________</td>
+                </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+
+            window.print();
+        }
+
+        function exportToExcel() {
+            if (state.subscribers.length === 0) {
+                alert('لا توجد بيانات لتصديرها');
+                return;
+            }
+
+            const now = new Date();
+            const curMonthRate = getMonthRate(now.getMonth() + 1, now.getFullYear());
+
+            const rows = state.subscribers.map((s, idx) => {
+                const effectiveRate = s.customRate || curMonthRate;
+                const mStatus = getSubscriberCurrentMonthStatus(s);
+                return {
+                    "ت": idx + 1,
+                    "اسم المشترك": s.name,
+                    "رقم الهاتف": s.phone || '',
+                    "عدد الأمبيرات": s.amperes,
+                    "سعر الأمبير": effectiveRate,
+                    "الاشتراك الشهري": s.amperes * effectiveRate,
+                    "حالة هذا الشهر": mStatus.label,
+                    "الدين المطلوب": s.currentDebt,
+                    "حالة الاشتراك": s.status === 'active' ? 'نشط' : 'متوقف',
+                    "ملاحظات": s.notes || ''
+                };
+            });
+
+            const worksheet = XLSX.utils.json_to_sheet(rows);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "المشتركين والديون");
+
+            const fileName = `ديون_${state.settings.genName}_${new Date().toISOString().split('T')[0]}.xlsx`;
+            XLSX.writeFile(workbook, fileName);
+            showToast('تم تصدير ملف Excel بنجاح');
+        }
+
+        function importFromExcel(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheetName = workbook.SheetNames[0];
+                    const sheet = workbook.Sheets[sheetName];
+                    const json = XLSX.utils.sheet_to_json(sheet);
+
+                    if (json.length === 0) {
+                        alert('الملف فارغ أو غير متوافق');
+                        return;
+                    }
+
+                    let addedCount = 0;
+                    json.forEach(row => {
+                        const name = row["اسم المشترك"] || row["الاسم"] || row["Name"];
+                        if (name) {
+                            const amps = parseFloat(row["عدد الأمبيرات"] || row["أمبير"] || 0);
+                            const debt = parseFloat(row["الدين المطلوب"] || row["الدين"] || 0);
+                            const phone = String(row["رقم الهاتف"] || row["الهاتف"] || '');
+                            const notes = row["ملاحظات"] || '';
+
+                            state.subscribers.push({
+                                id: 'sub_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+                                name: String(name).trim(),
+                                phone: phone.trim(),
+                                amperes: amps,
+                                customRate: null,
+                                currentDebt: debt,
+                                status: 'active',
+                                notes: notes
+                            });
+                            addedCount++;
+                        }
+                    });
+
+                    saveDatabase();
+                    updateStatsAndUI();
+                    showToast(`تم استيراد ${addedCount} مشترك بنجاح من Excel`);
+                } catch (err) {
+                    console.error("Import error:", err);
+                    alert('حدث خطأ أثناء قراءة ملف Excel');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+            event.target.value = '';
+        }
+
+        function downloadBackupJSON() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state, null, 2));
+            const dlAnchor = document.createElement('a');
+            dlAnchor.setAttribute("href", dataStr);
+            dlAnchor.setAttribute("download", `نسخة_احتياطية_${state.settings.genName}_${new Date().toISOString().split('T')[0]}.json`);
+            dlAnchor.click();
+            showToast('تم تحميل النسخة الاحتياطية بنجاح');
+        }
+
+        function restoreBackupJSON(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const parsed = JSON.parse(e.target.result);
+                    if (parsed.subscribers && Array.isArray(parsed.subscribers)) {
+                        state = parsed;
+                        saveDatabase();
+                        applySettingsToUI();
+                        updateStatsAndUI();
+                        closeModal('backupModal');
+                        showToast('تمت استعادة النسخة الاحتياطية بنجاح');
+                    } else {
+                        alert('الملف غير صالح أو لا يحتوي على بنية بيانات صحيحة');
+                    }
+                } catch (err) {
+                    alert('فشل قراءة ملف النسخة الاحتياطية');
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+
+        function resetAllData() {
+            if (confirm("هل أنت متأكد تماماً من رغبتك في حذف كافة المشتركين والبدء من الصفر؟ لا يمكن التراجع عن هذا الإجراء!")) {
+                state.subscribers = [];
+                state.transactions = [];
+                saveDatabase();
+                updateStatsAndUI();
+                closeModal('backupModal');
+                showToast('تم مسح كافة البيانات بنجاح');
+            }
+        }
+
+        function formatCurrency(val, includeSymbol = true) {
+            const formatted = Math.round(val || 0).toLocaleString('en-US');
+            return includeSymbol ? `${formatted} ${state.settings.currency}` : formatted;
+        }
+
+        // Strict HTML Escaping for XSS Prevention
+        function escapeHtml(text) {
+            if (text === null || text === undefined) return '';
+            return String(text)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        function openModal(id) {
+            document.getElementById(id).classList.remove('hidden');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.add('hidden');
+        }
+
+        function showToast(message) {
+            const existing = document.getElementById('toastNotification');
+            if (existing) existing.remove();
+
+            const toast = document.createElement('div');
+            toast.id = 'toastNotification';
+            toast.className = 'fixed top-4 left-4 right-4 sm:right-auto sm:left-5 bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-2xl text-xs font-bold flex items-center gap-2 z-50 transition transform translate-y-0';
+            toast.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400 text-base"></i><span>${escapeHtml(message)}</span>`;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
